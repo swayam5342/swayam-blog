@@ -6,7 +6,7 @@ interface Props {
 }
 
 const { post } = Astro.props;
-const { title, date, tags } = post.data;
+const { title, date, tags, featured } = post.data;
 
 const formatted = date.toLocaleDateString('en-US', {
   month: 'short',
@@ -15,7 +15,7 @@ const formatted = date.toLocaleDateString('en-US', {
 });
 ---
 
-<a href={`/blog/${post.slug}`} class="row">
+<a href={`/blog/${post.slug}`} class:list={['row', { featured }]}>
   <span class="date mono">{formatted}</span>
   <span class="title">{title}</span>
   {tags?.[0] && <span class="tag tag-inline">{tags[0]}</span>}
@@ -23,6 +23,7 @@ const formatted = date.toLocaleDateString('en-US', {
 
 <style>
   .row {
+    position: relative;
     display: grid;
     grid-template-columns: 7rem 1fr auto;
     align-items: baseline;
@@ -35,6 +36,16 @@ const formatted = date.toLocaleDateString('en-US', {
 
   .row:hover .title {
     color: var(--accent-ink);
+  }
+
+  .row:hover::before {
+    content: '';
+    position: absolute;
+    left: -1rem;
+    top: 0.7rem;
+    bottom: 0.7rem;
+    width: 2px;
+    background: var(--accent);
   }
 
   .date {

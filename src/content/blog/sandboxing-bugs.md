@@ -3,6 +3,7 @@ title: "Three Bugs That Almost Sank a Hackathon Sandbox"
 description: "Debugging cgroup v2 under WSL2, jail-relative paths, and a stubborn C linker bind mount while building goboxd."
 date: 2025-11-03
 tags: ["security", "go", "sandboxing"]
+featured: true
 ---
 
 `goboxd` runs untrusted code inside nsjail sandboxes. The idea is simple: accept a snippet, drop it into an isolated jail, execute it, return the output, and make sure nothing in that snippet can touch the host. The implementation was not simple, and three bugs in particular ate most of the build weekend.

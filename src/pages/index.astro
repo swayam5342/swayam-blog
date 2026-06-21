@@ -7,7 +7,9 @@ const allPosts = (await getCollection('blog', ({ data }) => !data.draft)).sort(
   (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
 );
 
-const featured = allPosts.slice(0, 3);
+const featured = allPosts.filter(post => post.data.featured).sort(
+  (a, b) => a.data.date.valueOf() - b.data.date.valueOf()
+);
 const recent = allPosts.slice(0, 6);
 ---
 
@@ -38,6 +40,8 @@ const recent = allPosts.slice(0, 6);
   <hr class="rule wrap" />
 
   <section class="wrap">
+  {featured.length > 0 && (
+    <>
     <div class="section-head">
       <h2>Featured Writing</h2>
       <a href="/blog" class="link view-all">View all →</a>
@@ -45,6 +49,9 @@ const recent = allPosts.slice(0, 6);
     <div class="post-list">
       {featured.map((post) => <PostRow post={post} />)}
     </div>
+    </>
+  )}
+
   </section>
 
   <section class="wrap">
