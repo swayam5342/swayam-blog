@@ -1,0 +1,48 @@
+---
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="wrap bar">
+    <p class="eyebrow">© {year} Swayam</p>
+    <nav class="links" aria-label="Social">
+      <a href="https://github.com/swayam5342" class="footer-link">GitHub</a>
+      <a href="https://www.linkedin.com/in/swayam5342" class="footer-link">LinkedIn</a>
+      <a href="https://swayam.li" class="footer-link">Website</a>
+      <a href="/blog" class="footer-link">Posts</a>
+      <a href="/blog/tags" class="footer-link">Tags</a>
+    </nav>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: 1px solid var(--line);
+    margin-top: 5rem;
+  }
+
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-block: 1.75rem;
+  }
+
+  .links {
+    display: flex;
+    gap: 1.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+  }
+
+  .footer-link {
+    color: var(--ink-soft);
+    text-decoration: none;
+  }
+
+  .footer-link:hover {
+    color: var(--accent-ink);
+  }
+</style>

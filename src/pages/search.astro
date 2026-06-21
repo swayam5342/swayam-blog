@@ -1,0 +1,288 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Search">
+  <section class="wrap search-section">
+    <div class="search-box">
+      <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" id="search-input" placeholder="Search..." autofocus autocomplete="off" spellcheck="false" />
+      <button id="clear-btn" aria-label="Clear search">Clear</button>
+    </div>
+
+    <div id="results-count" class="results-count" style="display: none;"></div>
+
+    <div id="search-results" class="post-list">
+      <!-- Results will be injected here -->
+    </div>
+    
+    <p id="no-results" style="display: none;" class="no-results-msg">No posts found.</p>
+    
+    <button id="load-more-btn" class="load-more-btn" style="display: none;">Load more results</button>
+  </section>
+</BaseLayout>
+
+<script>
+  let searchIndex: any[] = [];
+  let currentResults: any[] = [];
+  let displayedCount = 0;
+  let currentQuery = '';
+  const PAGE_SIZE = 10;
+  
+  const searchInput = document.getElementById('search-input') as HTMLInputElement;
+  const clearBtn = document.getElementById('clear-btn');
+  const resultsContainer = document.getElementById('search-results');
+  const noResults = document.getElementById('no-results');
+  const resultsCount = document.getElementById('results-count');
+  const loadMoreBtn = document.getElementById('load-more-btn');
+
+  async function fetchSearchIndex() {
+    try {
+      const response = await fetch('/search.json');
+      searchIndex = await response.json();
+    } catch (e) {
+      console.error('Failed to fetch search index', e);
+    }
+  }
+
+  function highlightText(text: string, query: string) {
+    if (!query || !text) return text;
+    // Create a regex to match the query case-insensitively
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark>$1</mark>');
+  }
+
+  function renderResults(append = false) {
+    if (!resultsContainer || !noResults || !resultsCount || !loadMoreBtn) return;
+    
+    if (!append) {
+      resultsContainer.innerHTML = '';
+      displayedCount = 0;
+    }
+    
+    if (currentResults.length === 0 && currentQuery) {
+      noResults.style.display = 'block';
+      resultsCount.style.display = 'none';
+      loadMoreBtn.style.display = 'none';
+      return;
+    }
+    
+    noResults.style.display = 'none';
+    
+    if (currentQuery) {
+      resultsCount.style.display = 'block';
+      resultsCount.innerHTML = `<strong>${currentResults.length}</strong> results for <strong>${currentQuery}</strong>`;
+    } else {
+      resultsCount.style.display = 'none';
+    }
+
+    const nextBatch = currentResults.slice(displayedCount, displayedCount + PAGE_SIZE);
+    
+    nextBatch.forEach(result => {
+      // Find where the match is to show a snippet, or fallback to description
+      let snippet = result.description || '';
+      
+      // If we match body but not title/description, we could try to extract a snippet.
+      // For simplicity, we just highlight what we have in description or fallback.
+      
+      const titleHtml = highlightText(result.title, currentQuery);
+      const snippetHtml = highlightText(snippet, currentQuery);
+      
+      const html = `
+        <div class="search-result-item">
+          <a href="/blog/${result.slug}" class="result-link">
+            <h3>${titleHtml}</h3>
+            <p class="desc">${snippetHtml}</p>
+          </a>
+        </div>
+      `;
+      resultsContainer.innerHTML += html;
+    });
+
+    displayedCount += nextBatch.length;
+
+    if (displayedCount < currentResults.length) {
+      loadMoreBtn.style.display = 'block';
+    } else {
+      loadMoreBtn.style.display = 'none';
+    }
+  }
+
+  function handleSearch() {
+    currentQuery = searchInput.value.toLowerCase().trim();
+    
+    if (!currentQuery) {
+      currentResults = [];
+      renderResults();
+      clearBtn!.style.display = 'none';
+      return;
+    }
+    
+    clearBtn!.style.display = 'block';
+    
+    currentResults = searchIndex.filter(post => {
+      return (
+        post.title.toLowerCase().includes(currentQuery) ||
+        post.description?.toLowerCase().includes(currentQuery) ||
+        post.body?.toLowerCase().includes(currentQuery)
+      );
+    });
+    
+    renderResults();
+  }
+
+  searchInput?.addEventListener('input', handleSearch);
+  
+  clearBtn?.addEventListener('click', () => {
+    if (searchInput) {
+      searchInput.value = '';
+      handleSearch();
+      searchInput.focus();
+    }
+  });
+
+  loadMoreBtn?.addEventListener('click', () => {
+    renderResults(true);
+  });
+  
+  // Initialize
+  clearBtn!.style.display = 'none';
+  fetchSearchIndex();
+</script>
+
+<style>
+  .search-section {
+    padding-top: 3rem;
+    padding-bottom: 4rem;
+    max-width: 42rem; /* Keep search centered and not too wide */
+  }
+  
+  .search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-bottom: 2rem;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.6rem 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  
+  .search-box:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-bg);
+  }
+  
+  .search-icon {
+    color: var(--ink-soft);
+    margin-right: 0.8rem;
+    flex-shrink: 0;
+  }
+  
+  #search-input {
+    flex-grow: 1;
+    background: transparent;
+    border: none;
+    color: var(--ink);
+    font-size: 1.1rem;
+    font-family: var(--font-body);
+    padding: 0;
+    outline: none;
+  }
+  
+  #search-input::placeholder {
+    color: var(--ink-faint);
+  }
+  
+  #clear-btn {
+    background: none;
+    border: none;
+    color: var(--ink-faint);
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 0.4rem;
+    font-family: var(--font-body);
+  }
+  
+  #clear-btn:hover {
+    color: var(--ink);
+  }
+
+  .results-count {
+    color: var(--ink-soft);
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--font-mono);
+  }
+  
+  .results-count strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  
+  .search-result-item {
+    margin-bottom: 2rem;
+  }
+  
+  .result-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  
+  .result-link h3 {
+    font-size: 1.3rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+  
+  .result-link .desc {
+    color: var(--ink-soft);
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.5;
+  }
+  
+  .result-link:hover h3 {
+    color: var(--accent-ink);
+  }
+  
+  /* Highlight matching terms */
+  mark {
+    background-color: var(--accent-bg);
+    color: var(--accent-ink);
+    padding: 0.1em 0.3em;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  .no-results-msg {
+    color: var(--ink-soft);
+  }
+  
+  .load-more-btn {
+    width: 100%;
+    background-color: var(--accent-bg);
+    color: var(--accent-ink);
+    border: none;
+    border-radius: 6px;
+    padding: 1rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 2rem;
+    font-family: var(--font-display);
+    transition: background-color 0.2s;
+  }
+  
+  .load-more-btn:hover {
+    background-color: #d1dcff; /* Slightly darker than accent-bg on light */
+  }
+  
+  :global(html.dark) .load-more-btn:hover {
+    background-color: #27345c; /* Adjusted for dark mode */
+  }
+</style>

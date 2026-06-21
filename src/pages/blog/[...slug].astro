@@ -1,0 +1,142 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection, type CollectionEntry } from 'astro:content';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog', ({ data }) => !data.draft);
+  return posts.map((post) => ({
+    params: { slug: post.slug },
+    props: { post },
+  }));
+}
+
+interface Props {
+  post: CollectionEntry<'blog'>;
+}
+
+const { post } = Astro.props;
+const { Content } = await post.render();
+const { title, description, date, tags } = post.data;
+
+const formatted = date.toLocaleDateString('en-US', {
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+});
+
+const wordCount = post.body ? post.body.split(/\s+/).length : 0;
+const readTime = Math.max(1, Math.ceil(wordCount / 200)) + ' min read';
+---
+
+<BaseLayout title={title} description={description}>
+  <div class="progress-container">
+    <div class="progress-bar" id="myBar"></div>
+  </div>
+
+  <article class="wrap post">
+    <h1>{title}</h1>
+    <div class="meta-row">
+      <span>{formatted}</span>
+      <span class="separator">&nbsp;&nbsp;</span>
+      <span>{readTime}</span>
+      <span class="separator">&nbsp;&nbsp;</span>
+      <span class="tags-inline">
+        {tags.map((tag: string, index: number) => (
+          <Fragment>
+            <a href={`/blog/tags/${tag}`} class="tag-link">{tag}</a>
+            {index < tags.length - 1 && ' · '}
+          </Fragment>
+        ))}
+      </span>
+    </div>
+    {description && <p class="dek">{description}</p>}
+    <div class="prose">
+      <Content />
+    </div>
+    <hr class="rule" />
+    <a href="/blog" class="link back">← all posts</a>
+  </article>
+</BaseLayout>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+    const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    const scrolled = (winScroll / height) * 100;
+    const bar = document.getElementById("myBar");
+    if (bar) {
+      bar.style.width = scrolled + "%";
+    }
+  });
+</script>
+
+<style>
+  .progress-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: transparent;
+    z-index: 1000;
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.1s ease-out;
+  }
+
+  .post {
+    padding-top: 3rem;
+    padding-bottom: 4rem;
+    max-width: var(--measure-wide);
+  }
+
+  .post .prose {
+    max-width: 100%;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 5vw, 3rem);
+    margin: 0.3rem 0 1rem;
+    text-align: center;
+    font-weight: 400;
+  }
+
+  .meta-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.9rem;
+    color: var(--ink-faint);
+    margin-bottom: 2.5rem;
+    font-family: var(--font-mono);
+  }
+
+  .tag-link {
+    text-decoration: none;
+    color: inherit;
+    transition: color 0.2s;
+  }
+
+  .tag-link:hover {
+    color: var(--ink);
+  }
+
+  .dek {
+    color: var(--ink-soft);
+    font-size: 1.15rem;
+    margin: 0 0 2rem;
+    text-align: center;
+    font-style: italic;
+  }
+
+  .back {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    text-decoration: none;
+    color: var(--accent-ink);
+  }
+</style>

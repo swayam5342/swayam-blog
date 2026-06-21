@@ -1,0 +1,60 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostRow from '../../components/PostRow.astro';
+import { getCollection } from 'astro:content';
+
+const allPosts = (await getCollection('blog', ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+
+const byYear = new Map<number, typeof allPosts>();
+for (const post of allPosts) {
+  const year = post.data.date.getFullYear();
+  if (!byYear.has(year)) byYear.set(year, []);
+  byYear.get(year)!.push(post);
+}
+const years = [...byYear.keys()].sort((a, b) => b - a);
+---
+
+<BaseLayout title="Blog" description="Posts on backend systems, security, and what I learn building things.">
+  <section class="wrap header-block">
+    <p class="eyebrow">{allPosts.length} posts</p>
+    <h1>Blog</h1>
+    Thoughts on systems, software, and learning.
+  </section>
+
+  <section class="wrap">
+    {
+      years.map((year) => (
+        <div class="year-group">
+          <p class="year mono">{year}</p>
+          <div class="post-list">
+            {byYear.get(year)!.map((post) => <PostRow post={post} />)}
+          </div>
+        </div>
+      ))
+    }
+  </section>
+</BaseLayout>
+
+<style>
+  .header-block {
+    padding-top: 3rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .header-block h1 {
+    font-size: 2rem;
+    margin: 0.3rem 0 0.8rem;
+  }
+
+  .year-group {
+    margin-bottom: 2.2rem;
+  }
+
+  .year {
+    color: var(--ink-faint);
+    font-size: 0.85rem;
+    margin: 0 0 0.4rem;
+  }
+</style>

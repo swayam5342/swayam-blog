@@ -1,0 +1,65 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  post: CollectionEntry<'blog'>;
+}
+
+const { post } = Astro.props;
+const { title, date, tags } = post.data;
+
+const formatted = date.toLocaleDateString('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+});
+---
+
+<a href={`/blog/${post.slug}`} class="row">
+  <span class="date mono">{formatted}</span>
+  <span class="title">{title}</span>
+  {tags?.[0] && <span class="tag tag-inline">{tags[0]}</span>}
+</a>
+
+<style>
+  .row {
+    display: grid;
+    grid-template-columns: 7rem 1fr auto;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.7rem 0;
+    text-decoration: none;
+    color: var(--ink);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .row:hover .title {
+    color: var(--accent-ink);
+  }
+
+  .date {
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+  }
+
+  .title {
+    font-weight: 500;
+  }
+
+  .tag-inline {
+    display: none;
+  }
+
+  @media (min-width: 560px) {
+    .tag-inline {
+      display: inline-block;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .row {
+      grid-template-columns: 1fr;
+      gap: 0.2rem;
+    }
+  }
+</style>

@@ -1,0 +1,135 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostRow from '../components/PostRow.astro';
+import { getCollection } from 'astro:content';
+
+const allPosts = (await getCollection('blog', ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+
+const featured = allPosts.slice(0, 3);
+const recent = allPosts.slice(0, 6);
+---
+
+<BaseLayout title="Home">
+  <section class="wrap hero">
+    <p class="eyebrow prompt">
+      <span class="mono">~/swayam $</span> whoami<span class="cursor" aria-hidden="true"></span>
+    </p>
+    <h1>Swayam</h1>
+    <p class="lede">
+      CS student and solo developer. I build backend systems and security
+      tooling — multi-tenant platforms, sandboxed code execution, and the
+      occasional transformer written from scratch in NumPy.
+    </p>
+    <p class="lede-sub">
+      Mostly Python and Go, sometimes TypeScript. I write about what breaks,
+      what I learn fixing it, and the systems thinking in between.
+    </p>
+    <nav class="social" aria-label="Elsewhere">
+      <a href="https://github.com/swayam5342" class="link">GitHub</a>
+      <span aria-hidden="true">·</span>
+      <a href="https://linkedin.com/in/swayam5342" class="link">LinkedIn</a>
+<span aria-hidden="true">·</span>
+      <a href="https://swayam.li" class="link">Website</a>
+    </nav>
+  </section>
+
+  <hr class="rule wrap" />
+
+  <section class="wrap">
+    <div class="section-head">
+      <h2>Featured Writing</h2>
+      <a href="/blog" class="link view-all">View all →</a>
+    </div>
+    <div class="post-list">
+      {featured.map((post) => <PostRow post={post} />)}
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="section-head">
+      <h2>Recent</h2>
+    </div>
+    <div class="post-list">
+      {recent.map((post) => <PostRow post={post} />)}
+    </div>
+  </section>
+
+</BaseLayout>
+
+<style>
+  .hero {
+    padding-top: 3.5rem;
+    padding-bottom: 2.5rem;
+    max-width: var(--measure);
+  }
+
+  .prompt {
+    margin-bottom: 0.9rem;
+  }
+
+  .cursor {
+    display: inline-block;
+    width: 0.5em;
+    height: 1em;
+    margin-left: 2px;
+    background: var(--accent);
+    vertical-align: text-bottom;
+    animation: blink 1.1s steps(1) infinite;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  h1 {
+    font-size: clamp(2.1rem, 5vw, 2.8rem);
+    margin-bottom: 1rem;
+  }
+
+  .lede {
+    font-size: 1.08rem;
+    color: var(--ink);
+    max-width: 34rem;
+    margin: 0 0 0.6em;
+  }
+
+  .lede-sub {
+    color: var(--ink-soft);
+    max-width: 34rem;
+    margin: 0 0 1.4em;
+  }
+
+  .social {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--ink-faint);
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+  }
+
+  section.wrap {
+    padding-block: 2.2rem;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 0.6rem;
+  }
+
+  .section-head h2 {
+    font-size: 1.1rem;
+  }
+
+  .view-all {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    text-decoration: none;
+    color: var(--accent-ink);
+  }
+
+</style>

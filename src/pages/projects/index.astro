@@ -1,0 +1,132 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const projects = [
+  {
+    name: 'PlugFit',
+    status: 'active',
+    description:
+      'Multi-tenant SaaS that ingests OpenAPI specs, Swagger, raw JSON, or live MCP servers, cleans and scores the resulting tool manifests with Gemini, and serves them back out as live HTTP MCP endpoints.',
+    stack: ['Python', 'FastAPI', 'Celery', 'Redis', 'Gemini'],
+  },
+  {
+    name: 'ToRead',
+    status: 'active',
+    description:
+      'A Go REST API for tracking manga, manhwa, and manhua, with AniList GraphQL as the metadata source and local caching. Built with strict clean-architecture layering.',
+    stack: ['Go', 'Gin', 'GORM', 'PostgreSQL'],
+  },
+  {
+    name: 'goboxd',
+    status: 'shipped',
+    description:
+      'An HTTP service that runs untrusted code inside nsjail sandboxes, built for a hackathon. Includes fixes for cgroup v2 quirks under WSL2 and jail-relative path handling.',
+    stack: ['Go', 'nsjail', 'Linux sandboxing'],
+  },
+  {
+    name: 'Go AV Engine',
+    status: 'shipped',
+    description:
+      'A signature-scanning antivirus engine with heuristics and Shannon entropy analysis for detecting packed or obfuscated binaries.',
+    stack: ['Go', 'Security'],
+  },
+];
+---
+
+<BaseLayout title="Projects" description="Things I've built — mostly backend systems and security tooling.">
+  <section class="wrap header-block">
+    <p class="eyebrow">lab notebook</p>
+    <h1>Projects</h1>
+    <p class="lede">
+      Backend platforms, security tooling, and a few things built just to
+      understand how they work. Most start as a hackathon weekend and a few
+      stick around.
+    </p>
+  </section>
+
+  <section class="wrap grid">
+    {
+      projects.map((project) => (
+        <article class="card">
+          <div class="card-head">
+            <h2>{project.name}</h2>
+            <span class:list={['status', 'mono', project.status]}>{project.status}</span>
+          </div>
+          <p class="desc">{project.description}</p>
+          <div class="stack">
+            {project.stack.map((item) => (
+              <span class="tag">{item}</span>
+            ))}
+          </div>
+        </article>
+      ))
+    }
+  </section>
+</BaseLayout>
+
+<style>
+  .header-block {
+    padding-top: 3rem;
+    padding-bottom: 1.5rem;
+    max-width: var(--measure);
+  }
+
+  h1 {
+    font-size: 2rem;
+    margin: 0.3rem 0 0.8rem;
+  }
+
+  .lede {
+    color: var(--ink-soft);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-bottom: 4rem;
+  }
+
+  .card {
+    background: var(--bg);
+    padding: 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .card-head h2 {
+    font-size: 1.05rem;
+  }
+
+  .status {
+    font-size: 0.7rem;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+
+  .status.active {
+    color: var(--moss);
+  }
+
+  .desc {
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    flex-grow: 1;
+  }
+
+  .stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+</style>
