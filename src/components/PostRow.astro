@@ -15,7 +15,7 @@ const formatted = date.toLocaleDateString('en-US', {
 });
 ---
 
-<a href={`/blog/${post.slug}`} class:list={['row', { featured }]}>
+<a href={`/blog/${post.id}`} class:list={['row', { featured }]}>
   <span class="date mono">{formatted}</span>
   <span class="title">{title}</span>
   {tags?.[0] && <span class="tag tag-inline">{tags[0]}</span>}
