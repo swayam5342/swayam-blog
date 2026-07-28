@@ -1,25 +1,27 @@
 /* ---------------------------------------------------------
-   Design tokens
-   bg / paper:      cool off-white, not the cream-serif cliché
-   ink:              near-black, slightly blue-leaning
-   accent (wire):    confident cobalt — circuits / network lines
-   accent (moss):    desaturated signal-green — terminal nod, secondary only
+   Theme tokens — shared palette set with swayam.li (the main site).
+   Each [data-theme] block sets the seven base tokens; --ink-faint,
+   --line-strong, --accent-ink, --moss(-bg) are derived once below
+   via color-mix so they stay in sync automatically.
+   To add/remove a theme: edit this file and ThemePicker.astro's THEMES list.
 --------------------------------------------------------- */
 :root {
-  --bg: #faf9f7;
-  --bg-raised: #f1f0eb;
-  --ink: #15181b;
-  --ink-soft: #5b6168;
-  --ink-faint: #8b9097;
-  --line: #e3e1da;
-  --line-strong: #c9c6bb;
+  color-scheme: dark;
 
-  --accent: #2d4fd6;
-  --accent-ink: #16348c;
-  --accent-bg: #e9edfb;
+  /* CARBON — dark-first default */
+  --bg: #0a0a0b;
+  --bg-raised: #121214;
+  --ink: #ededef;
+  --ink-soft: #8f8f98;
+  --line: #26262a;
+  --accent: #4d94ff;
+  --accent-bg: rgba(77, 148, 255, 0.1);
 
-  --moss: #3f6b52;
-  --moss-bg: #e8f0ea;
+  --ink-faint: color-mix(in srgb, var(--ink-soft) 65%, var(--bg));
+  --line-strong: color-mix(in srgb, var(--line) 55%, var(--ink));
+  --accent-ink: color-mix(in srgb, var(--accent) 75%, var(--ink));
+  --moss: var(--accent);
+  --moss-bg: var(--accent-bg);
 
   --font-display: "Lora", serif;
   --font-body: "Lora", serif;
@@ -31,30 +33,114 @@
   --radius: 3px;
 }
 
-html.dark {
+[data-theme="light"] {
+  /* PAPER */
+  --bg: #fafaf9;
+  --bg-raised: #f1f1ef;
+  --ink: #18181b;
+  --ink-soft: #6f6f78;
+  --line: #e0e0dc;
+  --accent: #2563eb;
+  --accent-bg: rgba(37, 99, 235, 0.08);
+}
+
+[data-theme="ayu-light"] {
+  --bg: #fafafa;
+  --bg-raised: #f3f4f5;
+  --ink: #5c6166;
+  --ink-soft: #828c99;
+  --line: #e7eaed;
+  --accent: #fa8d3e;
+  --accent-bg: rgba(250, 141, 62, 0.1);
+}
+
+[data-theme="catppuccin-latte"] {
+  --bg: #eff1f5;
+  --bg-raised: #e6e9ef;
+  --ink: #4c4f69;
+  --ink-soft: #6c6f85;
+  --line: #ccd0da;
+  --accent: #1e66f5;
+  --accent-bg: rgba(30, 102, 245, 0.08);
+}
+
+[data-theme="github-light"] {
+  --bg: #ffffff;
+  --bg-raised: #f6f8fa;
+  --ink: #1f2328;
+  --ink-soft: #656d76;
+  --line: #d0d7de;
+  --accent: #0969da;
+  --accent-bg: rgba(9, 105, 218, 0.08);
+}
+
+[data-theme="tokyo-night-storm"] {
+  --bg: #24283b;
+  --bg-raised: #1f2335;
+  --ink: #c0caf5;
+  --ink-soft: #565f89;
+  --line: #414868;
+  --accent: #7aa2f7;
+  --accent-bg: rgba(122, 162, 247, 0.1);
+}
+
+[data-theme="catppuccin-mocha"] {
+  --bg: #1e1e2e;
+  --bg-raised: #313244;
+  --ink: #cdd6f4;
+  --ink-soft: #a6adc8;
+  --line: #45475a;
+  --accent: #cba6f7;
+  --accent-bg: rgba(203, 166, 247, 0.1);
+}
+
+[data-theme="gruvbox-dark"] {
+  --bg: #1d2021;
+  --bg-raised: #282828;
+  --ink: #ebdbb2;
+  --ink-soft: #928374;
+  --line: #504945;
+  --accent: #83a598;
+  --accent-bg: rgba(131, 165, 152, 0.1);
+}
+
+[data-theme="nord"] {
+  --bg: #2e3440;
+  --bg-raised: #3b4252;
+  --ink: #eceff4;
+  --ink-soft: #a8b5cc;
+  --line: #4c566a;
+  --accent: #88c0d0;
+  --accent-bg: rgba(136, 192, 208, 0.1);
+}
+
+[data-theme="solarized"] {
+  --bg: #002b36;
+  --bg-raised: #073642;
+  --ink: #d4ccb2;
+  --ink-soft: #8ba0a4;
+  --line: #35555e;
+  --accent: #d4a017;
+  --accent-bg: rgba(212, 160, 23, 0.1);
+}
+
+[data-theme="light"],
+[data-theme="ayu-light"],
+[data-theme="catppuccin-latte"],
+[data-theme="github-light"] {
+  color-scheme: light;
+}
+
+[data-theme="tokyo-night-storm"],
+[data-theme="catppuccin-mocha"],
+[data-theme="gruvbox-dark"],
+[data-theme="nord"],
+[data-theme="solarized"] {
   color-scheme: dark;
-  --bg: #19191b;
-  --bg-raised: #1b1e23;
-  --ink: rgb(156, 163, 184);
-  --ink-soft: #a3a8af;
-  --ink-faint: #6e747c;
-  --line: #2a2d33;
-  --line-strong: #3b3f47;
-
-  --accent: #7d9bff;
-  --accent-ink: #aebdff;
-  --accent-bg: #1c2440;
-
-  --moss: #7fb597;
-  --moss-bg: #19261f;
 }
 
 * {
   box-sizing: border-box;
-}
-
-html {
-  color-scheme: light dark;
 }
 
 body {

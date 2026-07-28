@@ -38,20 +38,29 @@ const pageTitle = title === 'Home' ? 'Swayam' : `${title} · Swayam`;
     <title>{pageTitle}</title>
 
     <script is:inline>
-      const theme = (() => {
-        if (typeof localStorage !== 'undefined' && localStorage.getItem('theme')) {
-          return localStorage.getItem('theme');
+      (function () {
+        var THEME_IDS = [
+          'dark', 'light', 'ayu-light', 'catppuccin-latte', 'github-light',
+          'tokyo-night-storm', 'catppuccin-mocha', 'gruvbox-dark', 'nord', 'solarized',
+        ];
+        var DARK_THEMES = ['dark', 'tokyo-night-storm', 'catppuccin-mocha', 'gruvbox-dark', 'nord', 'solarized'];
+        var LIGHT_THEMES = ['light', 'ayu-light', 'catppuccin-latte', 'github-light'];
+
+        var saved = localStorage.getItem('theme');
+        var theme;
+        if (saved && THEME_IDS.indexOf(saved) !== -1) {
+          theme = saved;
+        } else {
+          var prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+          var pool = prefersLight ? LIGHT_THEMES : DARK_THEMES;
+          theme = pool[Math.floor(Math.random() * pool.length)];
+          localStorage.setItem('theme', theme);
         }
-        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-          return 'dark';
+
+        if (theme !== 'dark') {
+          document.documentElement.setAttribute('data-theme', theme);
         }
-        return 'light';
       })();
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
     </script>
   </head>
   <body>

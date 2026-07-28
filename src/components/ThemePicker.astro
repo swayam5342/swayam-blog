@@ -1,0 +1,194 @@
+---
+const THEMES = [
+  { id: 'dark', label: 'CARBON', bg: '#0a0a0b', accent: '#4d94ff' },
+  { id: 'light', label: 'PAPER', bg: '#fafaf9', accent: '#2563eb' },
+  { id: 'ayu-light', label: 'AYU_LIGHT', bg: '#fafafa', accent: '#fa8d3e' },
+  { id: 'catppuccin-latte', label: 'LATTE', bg: '#eff1f5', accent: '#1e66f5' },
+  { id: 'github-light', label: 'GITHUB_LIGHT', bg: '#ffffff', accent: '#0969da' },
+  { id: 'tokyo-night-storm', label: 'TOKYO_STORM', bg: '#24283b', accent: '#7aa2f7' },
+  { id: 'catppuccin-mocha', label: 'MOCHA', bg: '#1e1e2e', accent: '#cba6f7' },
+  { id: 'gruvbox-dark', label: 'GRUVBOX', bg: '#1d2021', accent: '#83a598' },
+  { id: 'nord', label: 'NORD', bg: '#2e3440', accent: '#88c0d0' },
+  { id: 'solarized', label: 'SOLARIZED', bg: '#002b36', accent: '#d4a017' },
+];
+---
+
+<div class="theme-picker">
+  <button id="theme-picker-btn" class="theme-btn" aria-label="Select theme" aria-expanded="false">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"></circle><circle cx="17.5" cy="10.5" r=".5"></circle><circle cx="8.5" cy="7.5" r=".5"></circle><circle cx="6.5" cy="12.5" r=".5"></circle><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C22 6.512 17.5 2 12 2z"></path></svg>
+  </button>
+
+  <div id="theme-picker-menu" class="theme-menu" role="menu" hidden>
+    <p class="theme-menu-label">COLOR_SCHEME</p>
+    <div class="theme-menu-list">
+      {THEMES.map((t) => (
+        <button class="theme-option" data-theme-id={t.id} role="menuitemradio">
+          <span class="swatch" style={`background:${t.bg}`}>
+            <span class="swatch-dot" style={`background:${t.accent}`}></span>
+          </span>
+          <span class="theme-option-label">{t.label}</span>
+          <svg class="check" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </button>
+      ))}
+    </div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'theme';
+
+  function applyTheme(id: string) {
+    if (id === 'dark') {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', id);
+    }
+    document.querySelectorAll<HTMLButtonElement>('.theme-option').forEach((el) => {
+      el.classList.toggle('active', el.dataset.themeId === id);
+    });
+  }
+
+  function setTheme(id: string) {
+    applyTheme(id);
+    localStorage.setItem(STORAGE_KEY, id);
+  }
+
+  // The head script already applied the theme before paint; just sync the picker UI.
+  applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
+
+  const btn = document.getElementById('theme-picker-btn');
+  const menu = document.getElementById('theme-picker-menu');
+
+  btn?.addEventListener('click', () => {
+    const isHidden = menu?.hasAttribute('hidden');
+    if (isHidden) {
+      menu?.removeAttribute('hidden');
+      btn.setAttribute('aria-expanded', 'true');
+    } else {
+      menu?.setAttribute('hidden', '');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    const target = e.target as Node;
+    if (!menu || menu.hasAttribute('hidden')) return;
+    if (!menu.contains(target) && !btn?.contains(target)) {
+      menu.setAttribute('hidden', '');
+      btn?.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('.theme-option').forEach((option) => {
+    option.addEventListener('click', () => {
+      const id = option.dataset.themeId;
+      if (id) setTheme(id);
+      menu?.setAttribute('hidden', '');
+      btn?.setAttribute('aria-expanded', 'false');
+    });
+  });
+</script>
+
+<style>
+  .theme-picker {
+    position: relative;
+    font-family: var(--font-mono);
+  }
+
+  .theme-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: var(--ink-soft);
+  }
+
+  .theme-btn:hover,
+  .theme-btn[aria-expanded="true"] {
+    color: var(--ink);
+  }
+
+  .theme-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.75rem);
+    width: 12rem;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.35);
+    z-index: 50;
+  }
+
+  .theme-menu-label {
+    margin: 0;
+    padding: 0.75rem 1rem 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .theme-menu-list {
+    max-height: 18rem;
+    overflow-y: auto;
+  }
+
+  .theme-option {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.6rem 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+    text-align: left;
+  }
+
+  .theme-option:hover {
+    color: var(--ink);
+    background: var(--bg-raised);
+  }
+
+  .theme-option.active {
+    color: var(--accent-ink);
+    background: var(--accent-bg);
+  }
+
+  .theme-option-label {
+    flex-grow: 1;
+  }
+
+  .swatch {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    border: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+
+  .swatch-dot {
+    width: 0.4rem;
+    height: 0.4rem;
+  }
+
+  .check {
+    display: none;
+    flex-shrink: 0;
+  }
+
+  .theme-option.active .check {
+    display: block;
+  }
+</style>
