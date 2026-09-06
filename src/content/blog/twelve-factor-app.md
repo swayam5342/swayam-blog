@@ -1,7 +1,7 @@
 ---
 title: "The 12-Factor App: The Blueprint Modern Backends Didn't Know They Were Following"
 description: "A deep dive into Heroku's 12-Factor methodology and how its principles quietly became the default assumptions behind Docker, Kubernetes, and cloud-native backend development."
-date: 2026-9-7
+date: 2026-09-07
 tags: ["backend", "architecture", "cloud", "devops"]
 featured: true
 ---
