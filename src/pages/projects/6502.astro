@@ -31,6 +31,7 @@ import { EXAMPLES } from '../../lib/asm6502/examples.ts';
       <label class="pg-field">
         <span class="pg-label">Speed</span>
         <select id="pg-speed" class="pg-select">
+          <option value="10">10 Hz (watch every cycle)</option>
           <option value="1000">1 kHz (slow)</option>
           <option value="1000000" selected>1 MHz</option>
           <option value="0">Max</option>
@@ -344,14 +345,23 @@ loop:  LDA #LIMIT
 
   // ----- run loop --------------------------------------------------------
   const MAX_CYCLES_PER_FRAME = 600_000;
+  // Cycles earned but not yet spent. A frame earns rate * dt cycles, which is a
+  // fraction of a cycle at slow clocks (10 Hz is ~0.17 per frame), and the CPU
+  // only runs whole instructions, so the balance carries over (and goes
+  // negative after a multi-cycle instruction) to keep the average rate exact.
+  let cycleBalance = 0;
 
   function frame(ts: number): void {
     if (!running || !emu) return;
     const dt = Math.min(ts - lastTs, 50);
     lastTs = ts;
     const rate = Number(speedSel.value);
-    const budget = rate === 0 ? MAX_CYCLES_PER_FRAME : Math.max(1, Math.round((rate * dt) / 1000));
-    emu.runCycles(budget);
+    if (rate === 0) {
+      emu.runCycles(MAX_CYCLES_PER_FRAME);
+    } else {
+      cycleBalance = Math.min(cycleBalance + (rate * dt) / 1000, rate / 10 + 1);
+      if (cycleBalance > 0) cycleBalance -= emu.runCycles(Math.ceil(cycleBalance));
+    }
     appendOutput(emu.drainOutput());
     refresh();
     if (emu.halted) {
@@ -370,6 +380,7 @@ loop:  LDA #LIMIT
     stepBtn.disabled = true;
     setStatus('Running…');
     lastTs = performance.now();
+    cycleBalance = 0;
     raf = requestAnimationFrame(frame);
   }
 
