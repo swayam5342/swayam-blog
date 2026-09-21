@@ -1,0 +1,773 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { EXAMPLES } from '../../lib/asm6502/examples.ts';
+---
+
+<BaseLayout
+  title="6502 Playground"
+  description="Type 6502 assembly and run it in your browser on a from-scratch C++ emulator compiled to WebAssembly."
+>
+  <div class="pg">
+    <section class="pg-intro">
+      <p class="eyebrow">playground</p>
+      <h1>6502 in your browser</h1>
+      <p class="pg-lede">
+        Write 6502 assembly, hit <kbd>Run</kbd>, and watch it execute. The CPU is a from-scratch C++
+        emulator compiled to WebAssembly; the assembler is TypeScript running right here on the page.
+        Nothing leaves your browser.
+      </p>
+    </section>
+
+    <div class="pg-toolbar" role="toolbar" aria-label="Playground controls">
+      <label class="pg-field">
+        <span class="visually-hidden">Example program</span>
+        <select id="pg-example" class="pg-select">
+          {EXAMPLES.map((ex) => <option value={ex.id}>{ex.name}</option>)}
+        </select>
+      </label>
+      <button id="pg-run" class="pg-btn pg-primary" disabled>Run</button>
+      <button id="pg-step" class="pg-btn" disabled>Step</button>
+      <button id="pg-reset" class="pg-btn" disabled title="Reassemble the source and restart">Reset</button>
+      <label class="pg-field">
+        <span class="pg-label">Speed</span>
+        <select id="pg-speed" class="pg-select">
+          <option value="1000">1 kHz (slow)</option>
+          <option value="1000000" selected>1 MHz</option>
+          <option value="0">Max</option>
+        </select>
+      </label>
+      <button id="pg-share" class="pg-btn" title="Copy a link containing this program">Copy link</button>
+      <span id="pg-status" class="pg-status" role="status" aria-live="polite">Loading emulator…</span>
+    </div>
+
+    <div class="pg-grid">
+      <section class="pg-pane pg-editor-pane" aria-label="Assembly source">
+        <div class="pg-editor">
+          <div id="pg-gutter" class="pg-gutter" aria-hidden="true"></div>
+          <textarea
+            id="pg-src"
+            class="pg-src"
+            spellcheck="false"
+            autocapitalize="off"
+            autocomplete="off"
+            wrap="off"
+            aria-label="6502 assembly source"></textarea>
+        </div>
+        <ul id="pg-problems" class="pg-problems" aria-label="Assembler problems"></ul>
+      </section>
+
+      <div class="pg-side">
+        <section class="pg-pane" aria-label="Console">
+          <h2 class="pg-h">Console <span class="pg-hint">$FF00 out · $FF01/$FF02 in</span></h2>
+          <pre id="pg-console" class="pg-console" aria-live="off"></pre>
+          <input
+            id="pg-kbd"
+            class="pg-kbd"
+            type="text"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="Type here to send keys to the program (Enter sends 13)"
+            aria-label="Keyboard input for the running program"
+          />
+        </section>
+
+        <section class="pg-pane" aria-label="Registers">
+          <h2 class="pg-h">Registers</h2>
+          <dl class="pg-regs">
+            <div><dt>A</dt><dd id="r-a">00</dd></div>
+            <div><dt>X</dt><dd id="r-x">00</dd></div>
+            <div><dt>Y</dt><dd id="r-y">00</dd></div>
+            <div><dt>SP</dt><dd id="r-sp">FD</dd></div>
+            <div><dt>PC</dt><dd id="r-pc">0000</dd></div>
+            <div><dt>Cycles</dt><dd id="r-cyc">0</dd></div>
+          </dl>
+          <div class="pg-flags" id="pg-flags" aria-label="Status flags">
+            {['N', 'V', '-', 'B', 'D', 'I', 'Z', 'C'].map((f) => <span data-f={f}>{f}</span>)}
+          </div>
+        </section>
+
+        <section class="pg-pane" aria-label="Memory">
+          <h2 class="pg-h">Memory</h2>
+          <div class="pg-memctl">
+            <button id="pg-prev" class="pg-btn pg-small" aria-label="Previous page">◀</button>
+            <label class="pg-pageinput">
+              <span class="pg-label">Page $</span>
+              <input id="pg-page" class="pg-select" maxlength="2" value="00" aria-label="Memory page (hex)" />
+            </label>
+            <button id="pg-next" class="pg-btn pg-small" aria-label="Next page">▶</button>
+            <button class="pg-btn pg-small" data-page="00">Zero page</button>
+            <button class="pg-btn pg-small" data-page="01">Stack</button>
+            <button class="pg-btn pg-small" data-page="code">Program</button>
+            <button class="pg-btn pg-small" data-page="FF">I/O</button>
+          </div>
+          <pre id="pg-mem" class="pg-mem" aria-label="Memory hex dump"></pre>
+        </section>
+      </div>
+    </div>
+
+    <details class="pg-pane pg-listing">
+      <summary>Assembly listing &amp; symbols</summary>
+      <pre id="pg-listing" class="pg-pre"></pre>
+    </details>
+
+    <section class="pg-ref prose">
+      <h2>Quick reference</h2>
+      <div class="pg-refgrid">
+        <div>
+          <h3>Syntax</h3>
+          <pre><code>; comment
+ORG $0600        ; where code goes (default $0200)
+LIMIT = 10       ; constant
+loop:  LDA #LIMIT
+       STA $10,X
+       BNE loop
+.byte 1, "hi", 0
+.word $1234
+.fill 4, $FF</code></pre>
+          <p>
+            Numbers: <code>$FF</code> <code>%1010</code> <code>42</code> <code>'A'</code>. Operators:
+            <code>+ - * / &amp; | ^ &lt;&lt; &gt;&gt;</code>, plus <code>&lt;label</code> / <code>&gt;label</code>
+            for the low / high byte. Execution stops when an instruction jumps to itself
+            (<code>JMP *</code>).
+          </p>
+        </div>
+        <div>
+          <h3>Devices</h3>
+          <table>
+            <thead><tr><th>Address</th><th>What</th></tr></thead>
+            <tbody>
+              <tr><td><code>$FF00</code></td><td>Write a byte: shows in the console</td></tr>
+              <tr><td><code>$FF01</code></td><td>Read: bit 0 set if a key is waiting</td></tr>
+              <tr><td><code>$FF02</code></td><td>Read: next key (0 if none)</td></tr>
+              <tr><td><code>$FF10–11</code></td><td>Timer reload value (lo, hi)</td></tr>
+              <tr><td><code>$FF12</code></td><td>Timer control: bit 0 enable, bit 1 periodic</td></tr>
+              <tr><td><code>$FF13</code></td><td>Timer status; any write acknowledges the IRQ</td></tr>
+            </tbody>
+          </table>
+          <p>
+            The IRQ vector lives at <code>$FFFE</code>: put <code>.word handler</code> there under an
+            <code>ORG $FFFE</code>. The Timer example does exactly this.
+          </p>
+        </div>
+      </div>
+    </section>
+  </div>
+</BaseLayout>
+
+<script>
+  import { assemble, formatListing, type AssembleResult } from '../../lib/asm6502/assembler.ts';
+  import { Emulator } from '../../lib/asm6502/emulator.ts';
+  import { EXAMPLES } from '../../lib/asm6502/examples.ts';
+
+  const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
+  const srcEl = $<HTMLTextAreaElement>('pg-src');
+  const gutterEl = $('pg-gutter');
+  const problemsEl = $('pg-problems');
+  const consoleEl = $('pg-console');
+  const kbdEl = $<HTMLInputElement>('pg-kbd');
+  const memEl = $('pg-mem');
+  const pageEl = $<HTMLInputElement>('pg-page');
+  const listingEl = $('pg-listing');
+  const statusEl = $('pg-status');
+  const runBtn = $<HTMLButtonElement>('pg-run');
+  const stepBtn = $<HTMLButtonElement>('pg-step');
+  const resetBtn = $<HTMLButtonElement>('pg-reset');
+  const exampleSel = $<HTMLSelectElement>('pg-example');
+  const speedSel = $<HTMLSelectElement>('pg-speed');
+
+  const hex = (n: number, w = 2): string => n.toString(16).toUpperCase().padStart(w, '0');
+
+  // ----- state -----------------------------------------------------------
+  let emu: Emulator | null = null;
+  let current: AssembleResult = assemble('');   // analysis of what's in the editor right now
+  let loaded: AssembleResult | null = null;     // what is in the machine
+  let dirty = true;                             // editor changed since `loaded`
+  let running = false;
+  let raf = 0;
+  let lastTs = 0;
+  let addrToLine = new Map<number, number>();
+  let memPage = 0;
+  let prevPage: Uint8Array | null = null;
+  let lastMemRender = 0;
+  let consoleText = '';
+
+  // ----- status ----------------------------------------------------------
+  function setStatus(text: string, kind: '' | 'ok' | 'err' = ''): void {
+    statusEl.textContent = text;
+    statusEl.dataset.kind = kind;
+  }
+
+  // ----- editor gutter & problems ----------------------------------------
+  function renderGutter(pcLine: number | null = null): void {
+    const n = srcEl.value.split('\n').length;
+    const errLines = new Set(current.errors.map((e) => e.line));
+    let html = '';
+    for (let i = 1; i <= n; i++) {
+      const cls = [errLines.has(i) ? 'err' : '', i === pcLine ? 'pc' : ''].filter(Boolean).join(' ');
+      html += `<div class="${cls}">${i}</div>`;
+    }
+    gutterEl.innerHTML = html;
+    gutterEl.scrollTop = srcEl.scrollTop;
+  }
+
+  function renderProblems(): void {
+    problemsEl.textContent = '';
+    for (const e of current.errors) {
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = `Line ${e.line}: ${e.message}`;
+      b.addEventListener('click', () => jumpToLine(e.line));
+      li.append(b);
+      problemsEl.append(li);
+    }
+  }
+
+  function jumpToLine(line: number): void {
+    const lines = srcEl.value.split('\n');
+    let start = 0;
+    for (let i = 0; i < line - 1; i++) start += lines[i]!.length + 1;
+    srcEl.focus();
+    srcEl.setSelectionRange(start, start + (lines[line - 1]?.length ?? 0));
+  }
+
+  function analyze(): void {
+    current = assemble(srcEl.value);
+    dirty = true;
+    renderProblems();
+    renderGutter();
+    listingEl.textContent = current.ok
+      ? `${formatListing(current.listing)}\n\nSymbols:\n${Object.entries(current.symbols)
+          .map(([k, v]) => `  ${k.padEnd(14)} $${hex(v, 4)}`)
+          .join('\n') || '  (none)'}`
+      : 'Fix the errors to see the listing.';
+  }
+
+  function currentPcLine(): number | null {
+    return emu ? (addrToLine.get(emu.regs().pc) ?? null) : null;
+  }
+
+  // ----- machine ---------------------------------------------------------
+  function loadMachine(): boolean {
+    if (!emu) return false;
+    if (!current.ok || current.entry === null) {
+      setStatus(current.ok ? 'Nothing to run — the program is empty.' : `${current.errors.length} error(s) — fix them first.`, 'err');
+      return false;
+    }
+    emu.loadProgram(current.segments, current.entry);
+    loaded = current;
+    dirty = false;
+    addrToLine = new Map();
+    for (const l of current.listing) if (l.bytes.length && !addrToLine.has(l.addr)) addrToLine.set(l.addr, l.line);
+    consoleText = '';
+    consoleEl.textContent = '';
+    prevPage = null;
+    const size = current.segments.reduce((n, s) => n + s.bytes.length, 0);
+    setStatus(`Assembled ${size} bytes, starting at $${hex(current.entry, 4)}.`, 'ok');
+    refresh(true);
+    return true;
+  }
+
+  function ensureLoaded(): boolean {
+    return !dirty && loaded !== null ? true : loadMachine();
+  }
+
+  function refresh(forceMem = false): void {
+    if (!emu) return;
+    renderRegs();
+    renderMem(forceMem);
+    renderGutter(dirty ? null : currentPcLine());
+  }
+
+  function renderRegs(): void {
+    if (!emu) return;
+    const r = emu.regs();
+    $('r-a').textContent = hex(r.a);
+    $('r-x').textContent = hex(r.x);
+    $('r-y').textContent = hex(r.y);
+    $('r-sp').textContent = hex(r.sp);
+    $('r-pc').textContent = hex(r.pc, 4);
+    $('r-cyc').textContent = String(r.cycles);
+    const bits: Record<string, number> = { N: 0x80, V: 0x40, '-': 0x20, B: 0x10, D: 0x08, I: 0x04, Z: 0x02, C: 0x01 };
+    document.querySelectorAll<HTMLElement>('#pg-flags span').forEach((el) => {
+      el.classList.toggle('on', (r.status & bits[el.dataset.f!]!) !== 0);
+    });
+  }
+
+  // ----- console ---------------------------------------------------------
+  function appendOutput(bytes: Uint8Array): void {
+    if (bytes.length === 0) return;
+    for (const b of bytes) {
+      if (b === 8) consoleText = consoleText.slice(0, -1);
+      else if (b === 10 || b === 13) consoleText += '\n';
+      else if (b === 9 || (b >= 32 && b < 127)) consoleText += String.fromCharCode(b);
+      else consoleText += '·';
+    }
+    if (consoleText.length > 20000) consoleText = consoleText.slice(-20000);
+    consoleEl.textContent = consoleText;
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+
+  // ----- memory view -----------------------------------------------------
+  function renderMem(force = false): void {
+    if (!emu) return;
+    const now = performance.now();
+    if (!force && now - lastMemRender < 100) return;
+    lastMemRender = now;
+    const data = emu.page(memPage);
+    const prev = prevPage;
+    let out = '';
+    for (let row = 0; row < 16; row++) {
+      out += `<span class="ad">${hex(memPage)}${hex(row * 16)}</span>  `;
+      let ascii = '';
+      for (let col = 0; col < 16; col++) {
+        const i = row * 16 + col;
+        const v = data[i]!;
+        const changed = prev && prev.length === 256 && prev[i] !== v;
+        out += changed ? `<span class="chg">${hex(v)}</span> ` : `${hex(v)} `;
+        ascii += v >= 32 && v < 127 ? String.fromCharCode(v).replace('<', '&lt;').replace('&', '&amp;') : '.';
+        if (col === 7) out += ' ';
+      }
+      out += ` <span class="as">${ascii}</span>\n`;
+    }
+    memEl.innerHTML = out;
+    prevPage = data;
+  }
+
+  function setPage(p: number, force = true): void {
+    memPage = ((p % 256) + 256) % 256;
+    pageEl.value = hex(memPage);
+    prevPage = null;
+    renderMem(force);
+  }
+
+  // ----- run loop --------------------------------------------------------
+  const MAX_CYCLES_PER_FRAME = 600_000;
+
+  function frame(ts: number): void {
+    if (!running || !emu) return;
+    const dt = Math.min(ts - lastTs, 50);
+    lastTs = ts;
+    const rate = Number(speedSel.value);
+    const budget = rate === 0 ? MAX_CYCLES_PER_FRAME : Math.max(1, Math.round((rate * dt) / 1000));
+    emu.runCycles(budget);
+    appendOutput(emu.drainOutput());
+    refresh();
+    if (emu.halted) {
+      stop();
+      setStatus(`Halted at $${hex(emu.regs().pc, 4)} (an instruction jumped to itself).`, 'ok');
+      return;
+    }
+    raf = requestAnimationFrame(frame);
+  }
+
+  function start(): void {
+    if (!emu || !ensureLoaded()) return;
+    if (emu.halted && !loadMachine()) return;
+    running = true;
+    runBtn.textContent = 'Pause';
+    stepBtn.disabled = true;
+    setStatus('Running…');
+    lastTs = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
+
+  function stop(): void {
+    running = false;
+    cancelAnimationFrame(raf);
+    runBtn.textContent = 'Run';
+    stepBtn.disabled = emu === null;
+  }
+
+  runBtn.addEventListener('click', () => {
+    if (running) {
+      stop();
+      setStatus(`Paused at $${hex(emu!.regs().pc, 4)}.`);
+    } else start();
+  });
+
+  stepBtn.addEventListener('click', () => {
+    if (!emu) return;
+    if (dirty || loaded === null) { loadMachine(); return; }
+    if (emu.halted) { setStatus('Halted — press Reset to start over.', 'ok'); return; }
+    emu.step();
+    appendOutput(emu.drainOutput());
+    refresh(true);
+    setStatus(emu.halted ? `Halted at $${hex(emu.regs().pc, 4)}.` : `PC = $${hex(emu.regs().pc, 4)}`);
+  });
+
+  resetBtn.addEventListener('click', () => {
+    stop();
+    analyze();
+    loadMachine();
+  });
+
+  // ----- keyboard input to the emulated program ---------------------------
+  kbdEl.addEventListener('keydown', (e) => {
+    if (!emu) return;
+    if (e.key === 'Enter') { emu.pushKey(13); e.preventDefault(); }
+    else if (e.key === 'Backspace') { emu.pushKey(8); e.preventDefault(); }
+  });
+  kbdEl.addEventListener('input', () => {
+    if (emu) for (const ch of kbdEl.value) emu.pushKey(ch.charCodeAt(0));
+    kbdEl.value = '';
+  });
+  consoleEl.addEventListener('click', () => kbdEl.focus());
+
+  // ----- editor behaviour ------------------------------------------------
+  let analyzeTimer = 0;
+  srcEl.addEventListener('input', () => {
+    clearTimeout(analyzeTimer);
+    renderGutter();
+    analyzeTimer = window.setTimeout(() => { analyze(); refresh(); }, 250);
+  });
+  srcEl.addEventListener('scroll', () => { gutterEl.scrollTop = srcEl.scrollTop; });
+  srcEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      srcEl.setRangeText('    ', srcEl.selectionStart, srcEl.selectionEnd, 'end');
+      srcEl.dispatchEvent(new Event('input'));
+    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      runBtn.click();
+    }
+  });
+
+  // ----- examples & sharing ----------------------------------------------
+  function setSource(text: string): void {
+    stop();
+    srcEl.value = text;
+    srcEl.scrollTop = 0;
+    loaded = null;
+    analyze();
+    if (emu) loadMachine();
+  }
+
+  exampleSel.addEventListener('change', () => {
+    const ex = EXAMPLES.find((x) => x.id === exampleSel.value);
+    if (!ex) return;
+    setSource(ex.source);
+    setPage(ex.page);
+    history.replaceState(null, '', location.pathname);
+  });
+
+  const b64encode = (s: string): string => {
+    const bytes = new TextEncoder().encode(s);
+    let bin = '';
+    bytes.forEach((b) => { bin += String.fromCharCode(b); });
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  };
+  const b64decode = (s: string): string => {
+    const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+    return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+  };
+
+  $('pg-share').addEventListener('click', async () => {
+    history.replaceState(null, '', `${location.pathname}#c=${b64encode(srcEl.value)}`);
+    try {
+      await navigator.clipboard.writeText(location.href);
+      setStatus('Link copied to clipboard.', 'ok');
+    } catch {
+      setStatus('Link is in the address bar — copy it from there.');
+    }
+  });
+
+  // ----- memory controls -------------------------------------------------
+  pageEl.addEventListener('change', () => {
+    const v = parseInt(pageEl.value, 16);
+    setPage(Number.isNaN(v) ? memPage : v);
+  });
+  $('pg-prev').addEventListener('click', () => setPage(memPage - 1));
+  $('pg-next').addEventListener('click', () => setPage(memPage + 1));
+  document.querySelectorAll<HTMLElement>('[data-page]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const p = b.dataset.page!;
+      setPage(p === 'code' ? ((loaded?.entry ?? current.entry ?? 0x200) >> 8) : parseInt(p, 16));
+    });
+  });
+
+  // ----- boot ------------------------------------------------------------
+  function initialSource(): { text: string; page: number } {
+    const m = /^#c=([\w-]+)/.exec(location.hash);
+    if (m) {
+      try { return { text: b64decode(m[1]!), page: 0 }; } catch { /* fall through to the default example */ }
+    }
+    return { text: EXAMPLES[0]!.source, page: EXAMPLES[0]!.page };
+  }
+
+  const init = initialSource();
+  srcEl.value = init.text;
+  memPage = init.page;
+  pageEl.value = hex(memPage);
+  analyze();
+
+  Emulator.create().then(
+    (e) => {
+      emu = e;
+      runBtn.disabled = stepBtn.disabled = resetBtn.disabled = false;
+      loadMachine();
+      setPage(memPage);
+    },
+    (err) => {
+      console.error(err);
+      setStatus('Could not load the emulator (WebAssembly failed to start).', 'err');
+    },
+  );
+</script>
+
+<style is:global>
+  .pg {
+    --pg-err: #e5484d;
+    --pg-lh: 1.45rem;
+    max-width: 74rem;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+  }
+
+  .pg-intro {
+    padding: 3rem 0 1.25rem;
+    max-width: var(--measure);
+  }
+  .pg-intro h1 { font-size: 2rem; margin: 0.3rem 0 0.8rem; }
+  .pg-lede { color: var(--ink-soft); margin: 0; }
+  .pg kbd {
+    font-family: var(--font-mono);
+    font-size: 0.8em;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    padding: 0.05em 0.4em;
+    background: var(--bg-raised);
+  }
+
+  /* toolbar */
+  .pg-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 0;
+  }
+  .pg-field { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .pg-label, .pg-hint {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-faint);
+  }
+  .pg-hint { font-weight: 400; margin-left: 0.5rem; }
+  .pg-btn, .pg-select {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--ink);
+    background: var(--bg-raised);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    padding: 0.4rem 0.75rem;
+    line-height: 1.2;
+  }
+  .pg-btn { cursor: pointer; }
+  .pg-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-ink); }
+  .pg-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .pg-primary { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
+  .pg-primary:hover:not(:disabled) { color: var(--bg); filter: brightness(1.1); }
+  .pg-small { padding: 0.25rem 0.5rem; font-size: 0.72rem; }
+  .pg-status {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    margin-left: auto;
+  }
+  .pg-status[data-kind="ok"] { color: var(--moss); }
+  .pg-status[data-kind="err"] { color: var(--pg-err); }
+
+  /* layout */
+  .pg-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+  .pg-side { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+  .pg-pane {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg);
+    padding: 0.85rem 1rem;
+    min-width: 0;
+  }
+  .pg-editor-pane { padding: 0; overflow: hidden; }
+  .pg-h {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+    margin: 0 0 0.6rem;
+  }
+
+  /* editor */
+  .pg-editor {
+    display: flex;
+    height: min(34rem, 70vh);
+    background: var(--bg-raised);
+  }
+  .pg-gutter, .pg-src {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    line-height: var(--pg-lh);
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+  .pg-gutter {
+    flex: none;
+    min-width: 3rem;
+    overflow: hidden;
+    text-align: right;
+    color: var(--ink-faint);
+    background: var(--bg-raised);
+    border-right: 1px solid var(--line);
+    user-select: none;
+  }
+  .pg-gutter div { padding: 0 0.6rem 0 0.5rem; height: var(--pg-lh); }
+  .pg-gutter .err { color: #fff; background: var(--pg-err); }
+  .pg-gutter .pc { color: var(--bg); background: var(--accent); font-weight: 700; }
+  .pg-src {
+    flex: 1;
+    min-width: 0;
+    resize: none;
+    border: 0;
+    outline: none;
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+    background: transparent;
+    color: var(--ink);
+    white-space: pre;
+    overflow: auto;
+    tab-size: 8;
+  }
+  .pg-src:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+
+  .pg-problems { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  .pg-problems:empty { display: none; }
+  .pg-problems li { border-bottom: 1px solid var(--line); }
+  .pg-problems li:last-child { border-bottom: 0; }
+  .pg-problems button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--pg-err);
+    background: color-mix(in srgb, var(--pg-err) 8%, var(--bg));
+    border: 0;
+    padding: 0.45rem 0.9rem;
+    cursor: pointer;
+  }
+  .pg-problems button:hover { background: color-mix(in srgb, var(--pg-err) 16%, var(--bg)); }
+
+  /* console */
+  .pg-console {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    line-height: 1.4;
+    margin: 0;
+    height: 9rem;
+    overflow: auto;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0.5rem 0.7rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+    cursor: text;
+  }
+  .pg-kbd {
+    width: 100%;
+    margin-top: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    padding: 0.4rem 0.6rem;
+  }
+
+  /* registers */
+  .pg-regs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin: 0;
+  }
+  .pg-regs div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.4rem;
+    padding: 0.3rem 0.6rem;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+  .pg-regs dt { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-faint); }
+  .pg-regs dd { margin: 0; font-family: var(--font-mono); font-size: 0.9rem; }
+  .pg-flags { display: flex; gap: 0.3rem; margin-top: 0.6rem; }
+  .pg-flags span {
+    flex: 1;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    padding: 0.2rem 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--ink-faint);
+  }
+  .pg-flags span.on { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 700; }
+
+  /* memory */
+  .pg-memctl { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin-bottom: 0.6rem; }
+  .pg-pageinput { display: inline-flex; align-items: center; gap: 0.25rem; }
+  .pg-pageinput input { width: 2.6rem; text-transform: uppercase; text-align: center; padding: 0.25rem; }
+  .pg-mem {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    line-height: 1.45;
+    margin: 0;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--ink);
+  }
+  .pg-mem .ad { color: var(--ink-faint); }
+  .pg-mem .as { color: var(--ink-soft); }
+  .pg-mem .chg { color: var(--accent-ink); background: var(--accent-bg); font-weight: 700; }
+
+  /* listing & reference */
+  .pg-listing { margin-top: 1rem; }
+  .pg-listing summary { cursor: pointer; font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-soft); }
+  .pg-pre {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    overflow: auto;
+    max-height: 26rem;
+    margin: 0.75rem 0 0;
+    white-space: pre;
+  }
+  .pg-ref { max-width: none; margin-top: 2.5rem; }
+  .pg-ref h2 { margin-top: 0; }
+  .pg-refgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 2rem; }
+  .pg-ref h3 { margin-top: 0; }
+
+  @media (max-width: 60rem) {
+    .pg-grid { grid-template-columns: minmax(0, 1fr); }
+    .pg-status { margin-left: 0; flex-basis: 100%; }
+    .pg-editor { height: 26rem; }
+  }
+  @media (max-width: 30rem) {
+    .pg { padding-left: 1rem; padding-right: 1rem; }
+    .pg-regs { grid-template-columns: repeat(2, 1fr); }
+    .pg-refgrid { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>

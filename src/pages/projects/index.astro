@@ -3,6 +3,15 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
 const projects = [
   {
+    name: '6502 Emulator',
+    status: 'shipped',
+    description:
+      'A from-scratch MOS 6502 emulator in C++ with a debugger, memory-mapped console, and timer interrupts. Compiled to WebAssembly, with an assembler written in TypeScript, so you can write and run 6502 assembly right in the browser.',
+    stack: ['C++', 'WebAssembly', 'TypeScript'],
+    href: '/projects/6502',
+    cta: 'Try the playground',
+  },
+  {
     name: 'PlugFit',
     status: 'active',
     description:
@@ -53,6 +62,11 @@ const projects = [
             <span class:list={['status', 'mono', project.status]}>{project.status}</span>
           </div>
           <p class="desc">{project.description}</p>
+          {project.href && (
+            <a class="link try" href={project.href}>
+              {project.cta} →
+            </a>
+          )}
           <div class="stack">
             {project.stack.map((item) => (
               <span class="tag">{item}</span>
@@ -122,6 +136,11 @@ const projects = [
     color: var(--ink-soft);
     font-size: 0.92rem;
     flex-grow: 1;
+  }
+
+  .try {
+    font-size: 0.92rem;
+    align-self: flex-start;
   }
 
   .stack {
