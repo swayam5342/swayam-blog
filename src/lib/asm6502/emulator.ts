@@ -50,7 +50,11 @@ export class Emulator {
 
   static async create(): Promise<Emulator> {
     const url = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/emu6502/emu6502.mjs`;
-    const mod = await import(/* @vite-ignore */ url);
+    // The glue lives in public/, which Vite's dev server refuses to serve for a
+    // rewritten `import()` (it appends "?import" and answers 500). Going through
+    // Function keeps the URL untouched in dev; production is unaffected.
+    const load = new Function('u', 'return import(u)') as (u: string) => Promise<{ default: () => Promise<unknown> }>;
+    const mod = await load(new URL(url, location.href).href);
     return new Emulator((await mod.default()) as WasmModule);
   }
 
