@@ -363,7 +363,9 @@ loop:  LDA #LIMIT
       if (cycleBalance > 0) cycleBalance -= emu.runCycles(Math.ceil(cycleBalance));
     }
     appendOutput(emu.drainOutput());
-    refresh();
+    // The memory view redraws at most every 100 ms while running; the frame that
+    // ends the run must always draw, or the final state never shows.
+    refresh(emu.halted);
     if (emu.halted) {
       stop();
       setStatus(`Halted at $${hex(emu.regs().pc, 4)} (an instruction jumped to itself).`, 'ok');
@@ -394,6 +396,7 @@ loop:  LDA #LIMIT
   runBtn.addEventListener('click', () => {
     if (running) {
       stop();
+      refresh(true);
       setStatus(`Paused at $${hex(emu!.regs().pc, 4)}.`);
     } else start();
   });
