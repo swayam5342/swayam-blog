@@ -11,49 +11,21 @@ const projects = [
     href: '/projects/6502',
     cta: 'Try the playground',
   },
-  {
-    name: 'PlugFit',
-    status: 'active',
-    description:
-      'Multi-tenant SaaS that ingests OpenAPI specs, Swagger, raw JSON, or live MCP servers, cleans and scores the resulting tool manifests with Gemini, and serves them back out as live HTTP MCP endpoints.',
-    stack: ['Python', 'FastAPI', 'Celery', 'Redis', 'Gemini'],
-  },
-  {
-    name: 'ToRead',
-    status: 'active',
-    description:
-      'A Go REST API for tracking manga, manhwa, and manhua, with AniList GraphQL as the metadata source and local caching. Built with strict clean-architecture layering.',
-    stack: ['Go', 'Gin', 'GORM', 'PostgreSQL'],
-  },
-  {
-    name: 'goboxd',
-    status: 'shipped',
-    description:
-      'An HTTP service that runs untrusted code inside nsjail sandboxes, built for a hackathon. Includes fixes for cgroup v2 quirks under WSL2 and jail-relative path handling.',
-    stack: ['Go', 'nsjail', 'Linux sandboxing'],
-  },
-  {
-    name: 'Go AV Engine',
-    status: 'shipped',
-    description:
-      'A signature-scanning antivirus engine with heuristics and Shannon entropy analysis for detecting packed or obfuscated binaries.',
-    stack: ['Go', 'Security'],
-  },
 ];
 ---
 
-<BaseLayout title="Projects" description="Things I've built — mostly backend systems and security tooling.">
+<BaseLayout title="Projects" description="Things I've built — currently a 6502 emulator you can try in the browser.">
   <section class="wrap header-block">
     <p class="eyebrow">lab notebook</p>
     <h1>Projects</h1>
     <p class="lede">
-      Backend platforms, security tooling, and a few things built just to
-      understand how they work. Most start as a hackathon weekend and a few
-      stick around.
+      Things I've built to understand how they work. Right now that's a 6502
+      CPU emulator, and you can run it in your browser.
     </p>
   </section>
 
-  <section class="wrap grid">
+  <section class="wrap">
+    <div class="grid">
     {
       projects.map((project) => (
         <article class="card">
@@ -75,6 +47,7 @@ const projects = [
         </article>
       ))
     }
+    </div>
   </section>
 </BaseLayout>
 
@@ -96,7 +69,7 @@ const projects = [
 
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 1px;
     background: var(--line);
     border: 1px solid var(--line);
