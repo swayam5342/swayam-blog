@@ -1,0 +1,88 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Not Found" description="Page not found.">
+  <section class="wrap hero">
+    <p class="eyebrow prompt">
+      <span class="mono">~/swayam $</span> cd <span class="path">./requested-page</span><span class="cursor" aria-hidden="true"></span>
+    </p>
+    <h1>404</h1>
+    <p class="lede">
+      <span class="mono">bash: cd: ./requested-page: No such file or directory</span>
+    </p>
+    <p class="lede-sub">
+      The page you're looking for doesn't exist, moved, or never did.
+    </p>
+    <nav class="social" aria-label="Navigate">
+      <a href="/" class="link">Home</a>
+      <span aria-hidden="true">·</span>
+      <a href="/blog" class="link">Blog</a>
+      <span aria-hidden="true">·</span>
+      <a href="/projects" class="link">Projects</a>
+    </nav>
+  </section>
+</BaseLayout>
+
+<style>
+  .hero {
+    padding-top: 3.5rem;
+    padding-bottom: 2.5rem;
+    max-width: var(--measure);
+  }
+
+  .prompt {
+    margin-bottom: 0.9rem;
+  }
+
+  .path {
+    color: var(--accent-ink);
+  }
+
+  .cursor {
+    display: inline-block;
+    width: 0.5em;
+    height: 1em;
+    margin-left: 2px;
+    background: var(--accent);
+    vertical-align: text-bottom;
+    animation: blink 1.1s steps(1) infinite;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  h1 {
+    font-size: clamp(3rem, 10vw, 5rem);
+    margin-bottom: 1rem;
+    font-family: var(--font-mono);
+  }
+
+  .lede {
+    font-size: 1.08rem;
+    color: var(--ink);
+    max-width: 34rem;
+    margin: 0 0 0.6em;
+  }
+
+  .lede .mono {
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+  }
+
+  .lede-sub {
+    color: var(--ink-soft);
+    max-width: 34rem;
+    margin: 0 0 1.4em;
+  }
+
+  .social {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--ink-faint);
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+  }
+</style>
