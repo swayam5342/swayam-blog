@@ -1,0 +1,269 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="Grain"
+  description="A falling-sand sandbox on a chunked cellular automaton: paint sand, water, fire and acid, and only the chunks that move cost anything."
+>
+  <div class="gr">
+    <section class="gr-intro">
+      <p class="eyebrow">playground</p>
+      <h1>Grain, a falling-sand sandbox</h1>
+      <p class="gr-lede">
+        Paint sand, water, fire, acid, gas, oil, wood and stone, drop spawners
+        that keep pouring, and watch them interact. Click inside the sandbox
+        and the keyboard shortcuts work too: <kbd>1</kbd>–<kbd>9</kbd> for
+        elements, <kbd>Space</kbd> to pause, <kbd>V</kbd> to show chunks.
+      </p>
+    </section>
+
+    <section class="gr-app" id="gr-app" tabindex="-1" aria-label="Falling-sand sandbox">
+      <div class="gr-bar">
+        <div class="bar-row">
+          <div class="mode" role="group" aria-label="Brush mode">
+            <button type="button" id="gr-mode-draw" aria-pressed="true">Draw</button>
+            <button type="button" id="gr-mode-spawn" aria-pressed="false">Spawner</button>
+          </div>
+          <div class="tools" role="toolbar" aria-label="Elements" id="gr-tools"></div>
+        </div>
+        <div class="bar-row">
+          <div class="brush">
+            <label for="gr-size">Brush</label>
+            <input type="range" id="gr-size" min="1" max="24" value="6" />
+            <output id="gr-size-out">6</output>
+          </div>
+          <div class="ctrl">
+            <button id="gr-play" type="button">Pause</button>
+            <button id="gr-step" type="button" disabled>Step</button>
+            <button id="gr-clear" type="button">Clear</button>
+            <button id="gr-chunks" type="button" aria-pressed="false">Show chunks</button>
+          </div>
+          <dl class="stats">
+            <div><dt>Frame rate</dt><dd id="gr-fps">–</dd></div>
+            <div><dt>Particles</dt><dd id="gr-count">–</dd></div>
+            <div><dt>Chunks awake</dt><dd id="gr-awake">–</dd></div>
+            <div><dt>Spawners</dt><dd id="gr-spawns">0</dd></div>
+          </dl>
+        </div>
+        <p class="desc" id="gr-desc"></p>
+      </div>
+      <div class="stage" id="gr-stage">
+        <canvas id="gr-sim"></canvas>
+        <div class="hint" id="gr-hint">Pick an element and draw. Try fire on the plank, or acid on the sand pile.</div>
+      </div>
+    </section>
+    <p class="gr-keys"><kbd>1</kbd>–<kbd>9</kbd> elements, <kbd>S</kbd> spawner mode, <kbd>[</kbd> <kbd>]</kbd> brush size, <kbd>Space</kbd> pause, <kbd>N</kbd> step, <kbd>V</kbd> chunks, <kbd>X</kbd> clear. Right-click erases.</p>
+
+    <article class="gr-article">
+      <h2>A grid of cells with simple rules</h2>
+      <p>
+        The world is a cellular automaton: a grid where every cell holds one
+        element, and each step every cell follows a few local rules. Sand tries
+        to fall straight down, then diagonally. Water does the same but also
+        spreads sideways. Heavier elements sink through lighter ones, which is
+        why sand settles under water and oil floats on top of it. Fire burns
+        down on its own and spreads to wood, oil and gas. Acid eats what it
+        touches and is diluted by water.
+      </p>
+
+      <h2>Only the parts that move</h2>
+      <p>
+        Most of a sandbox is still. A settled sand pile doesn't need to be
+        looked at sixty times a second, so the grid is split into 16×16 chunks.
+        Any cell that changes wakes its chunk for the next step, and its
+        neighbour too when the cell sits on an edge. A step only visits
+        chunks that were woken, and the rest sleep and cost nothing.
+      </p>
+      <pre><code>{`export function step() {
+  emit();
+  tick = (tick + 1) & 255;
+  const t = act; act = nxt; nxt = t; nxt.fill(0);
+  for (let cy = CH - 1; cy >= 0; cy--) {
+    // skip whole rows of sleeping chunks, then
+    // sweep the awake ones bottom-up
+  }
+}`}</code></pre>
+      <p>
+        Two details keep it honest. Rows are swept from the bottom up, and each
+        row alternates left-to-right and right-to-left so liquids don't drift
+        to one side. Every cell also records the tick it last moved on, so a
+        grain that falls into a row that hasn't been visited yet isn't moved a
+        second time in the same step.
+      </p>
+      <p>
+        Turn on <em>Show chunks</em> in the panel to see it. Pour some water
+        and the highlighted squares follow the flow, then go out one by one as
+        it settles.
+      </p>
+
+      <h2>The source</h2>
+      <p>
+        Plain JavaScript and a canvas with no dependencies: about five hundred
+        lines across the element tables, the engine and the UI. Read it at <a class="link" href="https://github.com/swayam5342/grain">github.com/swayam5342/grain</a>.
+      </p>
+    </article>
+  </div>
+</BaseLayout>
+
+<script>
+  import { boot } from "../../lib/grain/ui.js";
+  boot();
+</script>
+
+<style is:global>
+  /* Scoped under .gr: the tool buttons are created by ui.js, which Astro's
+     scoped styles can't reach. The panel is built from the site theme tokens;
+     the stage stays dark because the simulation draws empty cells dark. */
+  .gr {
+    --dim: var(--ink-soft);
+    --well: #090b10;
+
+    max-width: 70rem;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+  }
+  .gr code,
+  .gr kbd {
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+  }
+
+  .gr-intro {
+    padding: 3rem 0 1.5rem;
+    max-width: var(--measure);
+  }
+  .gr-intro h1 {
+    font-size: 2rem;
+    margin: 0.3rem 0 0.8rem;
+  }
+  .gr-lede {
+    color: var(--ink-soft);
+    margin: 0;
+  }
+
+  /* ---------- the sandbox ---------- */
+  .gr-app {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    height: min(82vh, 760px);
+    min-height: 480px;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+    font: 13px/1.5 var(--font-mono);
+    color: var(--ink);
+  }
+  .gr-app:focus { outline: none; } /* focused by clicking the stage; never tabbed to */
+  .gr-app button,
+  .gr-app input { font: inherit; color: inherit; }
+
+  .gr-bar {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 12px 14px; border-bottom: 1px solid var(--line);
+  }
+  .gr .bar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+  .gr .mode { display: flex; flex: none; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 6px; }
+  .gr .mode button {
+    font-size: 12px; color: var(--dim); background: transparent;
+    border: 0; border-radius: 4px; padding: 5px 14px; cursor: pointer;
+  }
+  .gr .mode button[aria-pressed="true"] { background: var(--accent); color: var(--bg); font-weight: 600; }
+
+  .gr .tools { display: flex; flex-wrap: wrap; gap: 2px; min-width: 0; }
+  .gr .tool {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: transparent; border: 1px solid transparent; border-radius: 5px;
+    padding: 4px 8px; cursor: pointer;
+  }
+  .gr .tool:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+  .gr .tool[aria-pressed="true"] { border-color: var(--el); background: color-mix(in srgb, var(--el) 16%, transparent); }
+  .gr .tool canvas { width: 18px; height: 18px; border-radius: 3px; image-rendering: pixelated; }
+  .gr .tool .k { display: none; } /* the key is in the button's tooltip */
+  .gr .desc { margin: 0; color: var(--dim); font-size: 12px; min-height: 1.5em; }
+
+  .gr .brush { display: flex; align-items: center; gap: 8px; }
+  .gr .brush input { width: 130px; accent-color: var(--accent); }
+  .gr .brush output { min-width: 2ch; text-align: right; font-variant-numeric: tabular-nums; }
+  .gr .ctrl { display: flex; flex-wrap: wrap; gap: 6px; }
+  .gr .ctrl button {
+    font-size: 12px; background: var(--bg); border: 1px solid var(--line-strong);
+    border-radius: var(--radius); padding: 5px 9px; cursor: pointer;
+  }
+  .gr .ctrl button:hover:not(:disabled) { border-color: var(--accent); }
+  .gr .ctrl button:disabled { opacity: 0.4; cursor: default; }
+  .gr .ctrl button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+
+  .gr .stats { margin: 0 0 0 auto; display: flex; flex-wrap: wrap; gap: 2px 16px; font-size: 12px; }
+  .gr .stats div { display: flex; gap: 6px; white-space: nowrap; }
+  .gr .stats dt { color: var(--dim); }
+  .gr .stats dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .gr-keys { margin: 0.7rem 0 0; color: var(--ink-faint); font: 12px/1.6 var(--font-mono); }
+  .gr-keys kbd { color: var(--ink-soft); border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; font-size: 1em; }
+  .gr-app button:focus-visible,
+  .gr-app input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .gr .stage {
+    position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--well);
+    touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+  .gr #gr-sim { position: absolute; image-rendering: pixelated; cursor: none; touch-action: none; }
+  .gr .hint {
+    position: absolute; left: 50%; top: 18px; transform: translateX(-50%); max-width: calc(100% - 32px);
+    color: #d7dce6; background: rgba(9, 11, 16, 0.72); border: 1px solid #272d39; border-radius: 6px;
+    padding: 7px 12px; font-size: 12px; pointer-events: none; transition: opacity 0.4s; text-align: center;
+  }
+  .gr .hint.gone { opacity: 0; }
+
+  /* ---------- article ---------- */
+  .gr-article {
+    max-width: var(--measure);
+    margin-top: 3.5rem;
+  }
+  .gr-article h2 {
+    font-size: 1.4rem;
+    margin: 2.4em 0 0.7em;
+  }
+  .gr-article h2:first-child {
+    margin-top: 0;
+  }
+  .gr-article p {
+    margin: 0 0 1.2em;
+  }
+  .gr-article pre {
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    margin: 0 0 1.2em;
+  }
+
+  @media (max-width: 760px) {
+    .gr { padding: 0 1rem 3rem; }
+    .gr-intro { padding-top: 2rem; }
+
+    .gr-app { height: min(86vh, 760px); }
+    .gr-bar { padding: 10px; gap: 8px; }
+    .gr .bar-row { gap: 8px 12px; }
+    .gr .mode { width: 100%; }
+    .gr .mode button { flex: 1; }
+    .gr .tools { flex-wrap: nowrap; overflow-x: auto; gap: 4px; padding-bottom: 2px; width: 100%; }
+    .gr .tool { flex: none; }
+    .gr .brush { flex: 1; }
+    .gr .brush input { flex: 1; width: auto; min-width: 0; }
+    .gr .stats {
+      margin: 0; width: 100%;
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 16px; font-size: 11px;
+    }
+    .gr .stats div { justify-content: space-between; }
+    .gr-keys { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gr .hint { transition: none; }
+  }
+</style>
