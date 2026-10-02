@@ -13,7 +13,6 @@ const asm = (label: string, op: string, arg: string, note = ''): Span[] => [
   ...(note ? [['cm', `  ; ${note}`] as Span] : []),
 ];
 
-// A line of `thompson -trace` output: the character read, then the state set.
 const trace = (read: string, set: string): Span[] =>
   read
     ? [['op', 'read '], ['lb', read.padEnd(6)], ['ar', set]]
