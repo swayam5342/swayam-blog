@@ -1,0 +1,407 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="Thompson's NFA"
+  description="A regex engine written in Go with Thompson's construction, compiled to WebAssembly, animating its state machine as it reads your input."
+>
+  <div class="tn">
+    <section class="tn-intro">
+      <p class="eyebrow">playground</p>
+      <h1>Thompson's NFA, one character at a time</h1>
+      <p class="tn-lede">
+        Type a regular expression and a string. A regex engine written in Go,
+        compiled to WebAssembly and running in this page, builds the pattern
+        into a state machine and reads your string through it. Every lit lamp
+        is a state the machine is in, and it can be in many at once.
+      </p>
+    </section>
+
+    <section class="tn-machine" aria-label="Regex state machine">
+      <div class="fields">
+        <div class="field">
+          <label for="tn-pattern">Pattern</label>
+          <div class="box">
+            <span aria-hidden="true">/</span><input
+              id="tn-pattern"
+              spellcheck="false"
+              autocomplete="off"
+              autocapitalize="off"
+              maxlength="80"
+              aria-describedby="tn-pattern-error"
+            /><span aria-hidden="true">/</span>
+          </div>
+          <div class="error" id="tn-pattern-error" role="status"></div>
+        </div>
+        <div class="field">
+          <label for="tn-input">Input string</label>
+          <div class="box">
+            <input id="tn-input" spellcheck="false" autocomplete="off" autocapitalize="off" maxlength="48" />
+          </div>
+        </div>
+      </div>
+
+      <div class="presets" id="tn-presets"><span>Try</span></div>
+
+      <div class="graph" id="tn-graph-wrap">
+        <svg id="tn-graph" role="img" aria-label="State machine diagram"></svg>
+      </div>
+
+      <div class="legend" aria-hidden="true">
+        <span><svg width="18" height="18"><circle cx="9" cy="9" r="8" fill="var(--off)" stroke="var(--dim)" stroke-width="1.4"></circle></svg>reads one character</span>
+        <span><svg width="14" height="14"><circle cx="7" cy="7" r="5.5" fill="var(--off)" stroke="var(--dim)" stroke-width="1.4"></circle></svg>junction, reads nothing</span>
+        <span><svg width="30" height="10"><line x1="0" y1="5" x2="30" y2="5" stroke="var(--dim)" stroke-dasharray="4 4" stroke-width="1.2"></line></svg>ε, a free move</span>
+        <span><svg width="18" height="18"><circle cx="9" cy="9" r="8" fill="var(--off)" stroke="var(--dim)" stroke-width="1.4"></circle><circle cx="9" cy="9" r="5" fill="none" stroke="var(--dim)"></circle></svg>accepting state</span>
+      </div>
+
+      <div class="tape-window" id="tn-tape-window" aria-hidden="true">
+        <div class="tape" id="tn-tape"></div>
+        <div class="head"></div>
+      </div>
+
+      <div class="controls">
+        <button class="btn" id="tn-b-reset" title="Back to the start (Home)"><svg viewBox="0 0 12 12"><rect x="0" y="1" width="2" height="10"></rect><path d="M12 1v10L3 6z"></path></svg>Restart</button>
+        <button class="btn" id="tn-b-back" title="Previous character (Left arrow)"><svg viewBox="0 0 12 12"><path d="M10 1v10L2 6z"></path></svg>Back</button>
+        <button class="btn primary" id="tn-b-play" title="Play or pause (Space)"></button>
+        <button class="btn" id="tn-b-step" title="Next character (Right arrow)">Step<svg viewBox="0 0 12 12"><path d="M2 1v10l8-5z"></path></svg></button>
+        <label class="speed">Speed <input type="range" id="tn-speed" min="0.25" max="3" step="0.25" value="1" /><output id="tn-speed-out">1×</output></label>
+        <div class="verdict idle" id="tn-verdict" role="status"><i></i><span>Ready</span></div>
+      </div>
+
+      <div class="readout">
+        <p class="narration" id="tn-narration" aria-live="polite"></p>
+        <div>
+          <p class="log-title">Lamp log: which states were lit after each character</p>
+          <div class="log" id="tn-log"></div>
+        </div>
+      </div>
+    </section>
+
+    <article class="tn-article">
+      <h2>What you're looking at</h2>
+      <p>
+        Each circle is a state. Large circles read exactly one character, and
+        the label on their arrow says which. Small circles are junctions: they
+        read nothing, and their dashed ε-arrows are moves the machine may take
+        for free. The machine starts at the state with the arrow coming in from
+        nowhere. When the input runs out, the string matches if the double
+        circle is lit.
+      </p>
+      <p>
+        The engine anchors at both ends, so the whole string has to match. Wrap
+        a pattern in <code>.*( … ).*</code> to search inside a longer string
+        instead.
+      </p>
+
+      <h2>Building the machine</h2>
+      <p>
+        Ken Thompson described this construction in 1968. It compiles a pattern
+        bottom-up, and each piece becomes a fragment: a start state plus a list
+        of arrows that don't point anywhere yet. Every operator does the same
+        small thing. It makes a state or two, then aims the loose arrows. Here
+        is what each operator produces on its own, drawn by the same engine as
+        the machine above.
+      </p>
+      <div class="figs" id="tn-figs"></div>
+      <p>
+        This is the whole of <code>*</code>, from <code>nfa.go</code>. The call
+        to <code>e.patch(s.ID)</code> aims every loose arrow of the inner
+        fragment back at the new junction, and that is the loop.
+      </p>
+      <pre><code>{`case nStar:
+	e := b.build(n.left)
+	s := b.newState(KindSplit)
+	s.Out = e.start
+	e.patch(s.ID)
+	return frag{s.ID, []*int{&s.Out1}}`}</code></pre>
+
+      <h2>Running it without guessing</h2>
+      <p>
+        A backtracking engine follows one path at a time. When a guess fails it
+        rewinds and tries the next one, and on patterns like <code>(x+x+)+y</code> the
+        number of ways to split the input grows
+        exponentially. Thompson's simulation never guesses. It carries the set
+        of every state the machine could be in, and each character turns that
+        set into the next one. A state enters the set at most once per
+        character, so matching takes time proportional to the length of the
+        input times the number of states, whatever the pattern is. Go's own <code>regexp</code> package
+        is built on the same guarantee.
+      </p>
+      <pre><code>{`for _, id := range clist {
+	s := n.States[id]
+	if s.consumes(r) {
+		nlist = m.add(nlist, s.Out, -1) // add follows ε-arrows too
+	}
+}
+clist, nlist = nlist, clist`}</code></pre>
+      <p>
+        Watch the set stay small on the classic trap. Twenty x's with no y
+        takes a backtracker millions of steps; here it is twenty steps, each
+        touching a handful of states.
+      </p>
+      <p><button class="inline-btn" id="tn-load-trap">Load the backtracking trap</button></p>
+
+      <h2>The source</h2>
+      <p>
+        The engine is a few hundred lines of Go with no dependencies: a
+        recursive-descent parser, the construction, the simulation, and tests
+        that check 3,000 random patterns against Go's <code>regexp</code> package. This
+        page runs that exact code. Read it at <a class="link" href="https://github.com/swayam5342/thompson">github.com/swayam5342/thompson</a>.
+      </p>
+    </article>
+
+    <p class="tn-engine" id="tn-engine">Loading the engine…</p>
+  </div>
+
+  <!-- Globals for visualizer.js; classic scripts run before the module below. -->
+  <script is:inline src="/thompson/dagre.min.js"></script>
+  <script is:inline src="/thompson/wasm_exec.js"></script>
+</BaseLayout>
+
+<script>
+  import { boot } from "../../lib/thompson/visualizer.js";
+  boot();
+</script>
+
+<style is:global>
+  /* Everything is scoped under .tn: most of these elements are created by
+     visualizer.js, which Astro's scoped styles can't reach. The machine's own
+     palette is derived from the site theme tokens. */
+  .tn {
+    --panel: var(--bg-raised);
+    --dim: var(--ink-soft);
+    --off: color-mix(in srgb, var(--ink-soft) 16%, var(--bg));
+    --lamp: var(--accent);
+    --lamp-ink: var(--bg);
+    --lamp-glow: color-mix(in srgb, var(--accent) 55%, transparent);
+    --eps: var(--ink);
+    --ok: light-dark(#1a7f37, #3fb950);
+    --bad: light-dark(#cf222e, #f85149);
+    --paper: #ece1c2;
+    --paper-edge: #d9cba3;
+    --paper-ink: #3a3326;
+    --hole: light-dark(#2a3239, var(--bg));
+
+    max-width: 70rem;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+  }
+  .tn code,
+  .tn kbd {
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+  }
+  .tn button,
+  .tn input {
+    font: inherit;
+    color: inherit;
+  }
+
+  .tn-intro {
+    padding: 3rem 0 1.5rem;
+    max-width: var(--measure);
+  }
+  .tn-intro h1 {
+    font-size: 2rem;
+    margin: 0.3rem 0 0.8rem;
+  }
+  .tn-lede {
+    color: var(--ink-soft);
+    margin: 0;
+  }
+
+  /* ---------- the machine ---------- */
+  .tn-machine {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 18px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    scroll-margin-top: 1rem;
+  }
+  .tn .fields { display: grid; grid-template-columns: 1.35fr 1fr; gap: 14px; }
+  .tn .field label { display: block; font: 500 0.78rem/1 var(--font-mono); color: var(--dim); margin-bottom: 8px; }
+  .tn .field .box {
+    display: flex; align-items: center; background: var(--bg);
+    border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 0 12px;
+  }
+  .tn .field .box:focus-within { border-color: var(--lamp); }
+  .tn .field .box span { font: 500 20px var(--font-mono); color: var(--dim); }
+  .tn .field input {
+    flex: 1; min-width: 0; border: 0; background: transparent; outline: none;
+    font: 500 19px/1 var(--font-mono); padding: 12px 4px;
+  }
+  .tn .field input[aria-invalid="true"] { color: var(--bad); }
+  .tn .error { font: 13px/1.5 var(--font-mono); color: var(--bad); margin-top: 8px; white-space: pre; overflow-x: auto; }
+  .tn .error:empty { display: none; }
+  .tn .presets { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+  .tn .presets > span { font: 13px var(--font-mono); color: var(--dim); margin-right: 4px; }
+  .tn .preset {
+    border: 1px solid var(--line-strong); background: transparent; border-radius: var(--radius);
+    padding: 5px 10px; cursor: pointer; text-align: left; line-height: 1.3;
+  }
+  .tn .preset:hover { border-color: var(--accent); }
+  .tn .preset code { font-size: 13px; }
+  .tn .preset small { display: block; color: var(--dim); font: 12px var(--font-mono); }
+
+  .tn .graph {
+    position: relative; overflow: auto; border-radius: 6px; min-height: 180px;
+    background-color: var(--bg);
+    background-image: radial-gradient(var(--line) 1px, transparent 1.2px);
+    background-size: 18px 18px;
+    display: flex; align-items: center;
+  }
+  .tn .graph svg { display: block; margin: 0 auto; flex: none; }
+  .tn .graph.stale svg { opacity: .3; }
+
+  /* graph parts */
+  .tn .edge { fill: none; stroke: var(--dim); stroke-width: 1.4; }
+  .tn .edge.eps { stroke-dasharray: 4 4; stroke-width: 1.15; }
+  .tn .edge.hot { stroke: var(--lamp); stroke-width: 2.6; stroke-dasharray: none; }
+  .tn .edge.flow { stroke: var(--eps); stroke-width: 1.8; }
+  .tn .arrowhead { fill: var(--dim); }
+  .tn .arrowhead.hot { fill: var(--lamp); }
+  .tn .arrowhead.flow { fill: var(--eps); }
+  .tn .elabel rect { fill: var(--panel); stroke: var(--line); }
+  .tn .elabel text { font: 500 12px var(--font-mono); fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
+  .tn .elabel.hot rect { stroke: var(--lamp); fill: var(--lamp); }
+  .tn .elabel.hot text { fill: var(--lamp-ink); }
+  .tn .state .body { fill: var(--off); stroke: var(--dim); stroke-width: 1.4; transition: fill .15s, stroke .15s; }
+  .tn .state .ring { fill: none; stroke: var(--dim); stroke-width: 1.2; }
+  .tn .state text { font: 500 11px var(--font-mono); fill: var(--dim); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .tn .state.junction text { font-size: 9px; }
+  .tn .state .halo { fill: var(--lamp-glow); opacity: 0; transition: opacity .2s; }
+  .tn .state.was .body { fill: color-mix(in srgb, var(--lamp) 30%, var(--off)); stroke: color-mix(in srgb, var(--lamp) 60%, var(--dim)); }
+  .tn .state.on .body { fill: var(--lamp); stroke: var(--lamp); }
+  .tn .state.on text { fill: var(--lamp-ink); font-weight: 600; }
+  .tn .state.on .ring { stroke: var(--lamp-ink); }
+  .tn .state.on .halo { opacity: 1; }
+  .tn .state.win .body { fill: var(--ok); stroke: var(--ok); }
+  .tn .state.win .halo { fill: color-mix(in srgb, var(--ok) 55%, transparent); }
+  .tn .start-arrow { stroke: var(--ink); stroke-width: 1.6; }
+  .tn .pulse { fill: var(--lamp); }
+  .tn .pulse.flow { fill: var(--eps); }
+  .tn .mini .state text { display: none; }
+
+  /* paper tape */
+  .tn .tape-window {
+    position: relative; overflow: hidden; height: 128px; border-radius: 6px;
+    background: var(--bg);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  }
+  .tn .tape {
+    position: absolute; top: 14px; left: 0; display: flex; height: 100px;
+    background: var(--paper); border-top: 1px solid var(--paper-edge); border-bottom: 1px solid var(--paper-edge);
+    transition: transform .32s cubic-bezier(.3,.7,.3,1);
+  }
+  .tn .frame {
+    width: 38px; flex: none; display: flex; flex-direction: column; align-items: center;
+    padding-top: 7px; gap: 2px; cursor: pointer; position: relative;
+  }
+  .tn .frame.leader { cursor: default; }
+  .tn .hole { width: 7px; height: 7px; border-radius: 50%; }
+  .tn .hole.punched { background: var(--hole); }
+  .tn .hole.feed { width: 4px; height: 4px; background: var(--hole); margin: 1.5px 0; }
+  .tn .glyph { font: 600 15px/1 var(--font-mono); color: var(--paper-ink); margin-top: 6px; height: 16px; opacity: .35; }
+  .tn .frame.read .glyph { opacity: .9; }
+  .tn .frame.read { background: rgba(0,0,0,.05); }
+  .tn .frame.current .glyph { opacity: 1; }
+  .tn .frame.skipped .glyph { text-decoration: line-through; opacity: .3; }
+  .tn .head {
+    position: absolute; top: 6px; bottom: 6px; width: 46px; left: 50%; margin-left: -23px;
+    border: 2px solid var(--lamp); border-radius: 5px; pointer-events: none;
+  }
+
+  /* controls */
+  .tn .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .tn .btn {
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    font: 500 0.8rem/1 var(--font-mono); padding: 9px 12px; border-radius: var(--radius);
+    border: 1px solid var(--line-strong); background: var(--bg);
+  }
+  .tn .btn:hover:not(:disabled) { border-color: var(--accent); }
+  .tn .btn:disabled { opacity: .4; cursor: default; }
+  .tn .btn svg { width: 12px; height: 12px; fill: currentColor; }
+  .tn .btn.primary { background: var(--lamp); border-color: var(--lamp); color: var(--lamp-ink); font-weight: 600; min-width: 92px; }
+  .tn .btn.primary:hover:not(:disabled) { filter: brightness(1.12); }
+  .tn .speed { display: inline-flex; align-items: center; gap: 8px; font: 0.8rem var(--font-mono); color: var(--dim); margin-left: 6px; }
+  .tn .speed input { width: 96px; accent-color: var(--lamp); }
+  .tn .verdict { margin-left: auto; display: inline-flex; align-items: center; gap: 9px; font: 600 0.85rem var(--font-mono); }
+  .tn .verdict i { width: 14px; height: 14px; border-radius: 50%; background: var(--off); border: 1px solid var(--line); display: inline-block; }
+  .tn .verdict.match i { background: var(--ok); border-color: var(--ok); box-shadow: 0 0 10px var(--ok); }
+  .tn .verdict.nomatch i { background: var(--bad); border-color: var(--bad); box-shadow: 0 0 10px var(--bad); }
+  .tn .verdict.match { color: var(--ok); }
+  .tn .verdict.nomatch { color: var(--bad); }
+  .tn .verdict.idle { color: var(--dim); font-weight: 500; }
+
+  .tn .readout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+  .tn .narration { margin: 0; font-size: 1rem; line-height: 1.65; max-width: 60ch; min-height: 5.5em; }
+  .tn .narration code { background: var(--bg); padding: 1px 5px; border-radius: var(--radius); }
+  .tn .log-title { font: 500 0.78rem var(--font-mono); color: var(--dim); margin: 0 0 8px; }
+  .tn .log { position: relative; overflow: auto; max-height: 250px; }
+  .tn .log-grid { position: relative; display: grid; gap: 2px; font: 10px/12px var(--font-mono); width: max-content; }
+  .tn .log-grid .lbl { color: var(--dim); text-align: right; padding-right: 6px; }
+  .tn .log-grid .lbl.cons { color: var(--ink); }
+  .tn .log-grid .hd { text-align: center; color: var(--dim); }
+  .tn .log-grid .c { width: 12px; height: 12px; border-radius: 2px; background: var(--off); cursor: pointer; }
+  .tn .log-grid .c.on { background: var(--lamp); }
+  .tn .log-grid .c.acc.on { background: var(--ok); }
+  .tn .log-cursor { position: absolute; top: 0; bottom: 0; width: 14px; margin-left: -1px; border: 1px solid var(--ink); border-radius: 3px; pointer-events: none; }
+  .tn .log-future { position: absolute; top: 0; bottom: 0; right: 0; background: var(--panel); opacity: .82; pointer-events: none; }
+
+  .tn .legend { display: flex; flex-wrap: wrap; gap: 18px; font: 0.75rem var(--font-mono); color: var(--dim); }
+  .tn .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .tn .legend svg { overflow: visible; }
+
+  /* ---------- article ---------- */
+  .tn-article { max-width: var(--measure); margin-top: 3.5rem; }
+  .tn-article h2 { font-size: 1.4rem; margin: 2.4em 0 0.7em; }
+  .tn-article h2:first-child { margin-top: 0; }
+  .tn-article p { margin: 0 0 1.2em; }
+  .tn-article p code {
+    background: var(--bg-raised);
+    padding: 0.15em 0.4em;
+    border-radius: var(--radius);
+  }
+  .tn-article pre {
+    background: var(--bg-raised); border: 1px solid var(--line); border-radius: 6px;
+    padding: 1rem 1.1rem; overflow-x: auto; font-size: 0.85rem; line-height: 1.55; tab-size: 4;
+    margin: 0 0 1.2em;
+  }
+  .tn .figs {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px 18px;
+    margin: 1.5rem 0 2rem; width: min(var(--measure-wide), calc(100vw - 3rem));
+  }
+  .tn .figs figure { margin: 0; }
+  .tn .figs .graph { min-height: 110px; background-size: 14px 14px; }
+  .tn .figs figcaption { font-size: 0.9rem; color: var(--dim); margin-top: 8px; line-height: 1.5; }
+  .tn .figs figcaption code { color: var(--ink); }
+  .tn .inline-btn {
+    font: 500 0.85rem var(--font-mono); border: 1px solid var(--lamp); color: var(--ink);
+    background: transparent; padding: 6px 12px; border-radius: var(--radius); cursor: pointer;
+  }
+  .tn .inline-btn:hover { background: var(--accent-bg); }
+  .tn-engine {
+    margin: 3rem 0 0; padding-top: 1rem; border-top: 1px solid var(--line);
+    font: 0.78rem/1.6 var(--font-mono); color: var(--ink-faint);
+  }
+
+  @media (max-width: 760px) {
+    .tn { padding: 0 1rem 3rem; }
+    .tn-intro { padding-top: 2rem; }
+    .tn .fields, .tn .readout { grid-template-columns: 1fr; }
+    .tn .figs { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+    .tn-machine { padding: 14px; }
+    .tn .presets { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+    .tn .preset { flex: none; }
+    .tn .verdict { margin-left: 0; width: 100%; }
+    .tn .speed { margin-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tn .tape, .tn .state .body, .tn .state .halo { transition: none; }
+  }
+</style>
