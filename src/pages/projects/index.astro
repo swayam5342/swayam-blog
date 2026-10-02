@@ -2,7 +2,23 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
 // One entry per project. `specimen` is a short, real excerpt shown beside the
-// copy: code lines are [label, mnemonic, operand, comment] tuples.
+// copy: each code line is a list of [class, text] spans (lb, op, ar, cm).
+type Span = [string, string];
+
+// A line of 6502 assembly: label, mnemonic, operand, comment.
+const asm = (label: string, op: string, arg: string, note = ''): Span[] => [
+  ['lb', label.padEnd(7)],
+  ['op', op.padEnd(6)],
+  ['ar', arg],
+  ...(note ? [['cm', `  ; ${note}`] as Span] : []),
+];
+
+// A line of `thompson -trace` output: the character read, then the state set.
+const trace = (read: string, set: string): Span[] =>
+  read
+    ? [['op', 'read '], ['lb', read.padEnd(6)], ['ar', set]]
+    : [['op', 'start'.padEnd(11)], ['ar', set]];
+
 const projects = [
   {
     name: '6502 Emulator',
@@ -15,23 +31,46 @@ const projects = [
     specimen: {
       title: 'print_string.asm',
       code: [
-        ['', 'LDX', '#0', ''],
-        ['LOOP:', 'LDA', 'MSG,X', ''],
-        ['', 'BEQ', 'DONE', 'end of string'],
-        ['', 'STA', '$FF00', 'write to console'],
-        ['', 'INX', '', ''],
-        ['', 'JMP', 'LOOP', ''],
-        ['DONE:', 'JMP', 'DONE', 'halt'],
-        ['MSG:', '.byte', '"6502", 0', ''],
+        asm('', 'LDX', '#0'),
+        asm('LOOP:', 'LDA', 'MSG,X'),
+        asm('', 'BEQ', 'DONE', 'end of string'),
+        asm('', 'STA', '$FF00', 'write to console'),
+        asm('', 'INX', ''),
+        asm('', 'JMP', 'LOOP'),
+        asm('DONE:', 'JMP', 'DONE', 'halt'),
+        asm('MSG:', '.byte', '"6502", 0'),
       ],
+      outputTitle: 'console',
       output: '6502',
       footer: 'Halted at $090E',
+    },
+  },
+  {
+    name: "Thompson's NFA",
+    status: 'Shipped',
+    summary:
+      'A regex engine in Go, built the way Ken Thompson described in 1968: compile the pattern to an NFA, then follow every path at once, so matching stays linear in the input. Compiled to WebAssembly, it animates its own state machine reading your string.',
+    stack: ['Go', 'WebAssembly', 'JavaScript'],
+    href: '/projects/thompson',
+    cta: 'Watch it run',
+    specimen: {
+      title: "thompson -trace '(a|b)*abb' aabb",
+      code: [
+        trace('', '{0 1 2 3 4}'),
+        trace('"a"', '{0 1 2 3 4 5}'),
+        trace('"a"', '{0 1 2 3 4 5}'),
+        trace('"b"', '{0 1 2 3 4 6}'),
+        trace('"b"', '{0 1 2 3 4 7}'),
+      ],
+      outputTitle: 'result',
+      output: 'match',
+      footer: 'State 7 accepts',
     },
   },
 ];
 ---
 
-<BaseLayout title="Projects" description="Things I've built. Currently a 6502 emulator you can try in the browser.">
+<BaseLayout title="Projects" description="Things I've built: a 6502 emulator and a Thompson NFA regex engine, both running in your browser.">
   <div class="page">
     <header class="intro">
       <h1>Projects</h1>
@@ -55,12 +94,12 @@ const projects = [
             <a class="specimen" href={p.href} tabindex="-1" aria-hidden="true">
               <div class="pane code">
                 <div class="bar mono">{p.specimen.title}</div>
-                <pre class="mono">{p.specimen.code.map(([label, op, arg, note]) => (
-                  <span class="ln"><span class="lb">{label.padEnd(7)}</span><span class="op">{op.padEnd(6)}</span><span class="ar">{arg}</span>{note && <span class="cm">{`  ; ${note}`}</span>}{'\n'}</span>
+                <pre class="mono">{p.specimen.code.map((line) => (
+                  <span class="ln">{line.map(([cls, text]) => <span class={cls}>{text}</span>)}{'\n'}</span>
                 ))}</pre>
               </div>
               <div class="pane out">
-                <div class="bar mono"><span>console</span><span>{p.specimen.footer}</span></div>
+                <div class="bar mono"><span>{p.specimen.outputTitle}</span><span>{p.specimen.footer}</span></div>
                 <pre class="mono result">{p.specimen.output}<span class="caret"></span></pre>
               </div>
             </a>
