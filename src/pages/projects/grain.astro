@@ -1,0 +1,135 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Grain from "../../components/Grain.astro";
+---
+
+<BaseLayout
+  title="Grain"
+  description="A falling-sand sandbox on a chunked cellular automaton: paint sand, water, fire and acid, and only the chunks that move cost anything."
+>
+  <div class="gr">
+    <section class="gr-intro">
+      <p class="eyebrow">playground</p>
+      <h1>Grain, a falling-sand sandbox</h1>
+      <p class="gr-lede">
+        Paint sand, water, fire, acid, gas, oil, wood and stone, drop spawners
+        that keep pouring, and watch them interact. Click inside the sandbox
+        first and the keyboard shortcuts work too: <kbd>1</kbd>–<kbd>9</kbd> for
+        elements, <kbd>Space</kbd> to pause, <kbd>V</kbd> to show chunks.
+      </p>
+    </section>
+
+    <Grain height="min(82vh, 760px)" />
+
+    <article class="gr-article">
+      <h2>A grid of cells with simple rules</h2>
+      <p>
+        The world is a cellular automaton: a grid where every cell holds one
+        element, and each step every cell follows a few local rules. Sand tries
+        to fall straight down, then diagonally. Water does the same but also
+        spreads sideways. Heavier elements sink through lighter ones, which is
+        why sand settles under water and oil floats on top of it. Fire burns
+        down on its own and spreads to wood, oil and gas. Acid eats what it
+        touches and is diluted by water.
+      </p>
+
+      <h2>Only the parts that move</h2>
+      <p>
+        Most of a sandbox is still. A settled sand pile doesn't need to be
+        looked at sixty times a second, so the grid is split into 16×16 chunks.
+        Any cell that changes wakes its chunk for the next step, and its
+        neighbour too when the cell sits on an edge. A step only visits
+        chunks that were woken, and the rest sleep and cost nothing.
+      </p>
+      <pre><code>{`export function step() {
+  emit();
+  tick = (tick + 1) & 255;
+  const t = act; act = nxt; nxt = t; nxt.fill(0);
+  for (let cy = CH - 1; cy >= 0; cy--) {
+    // skip whole rows of sleeping chunks, then
+    // sweep the awake ones bottom-up
+  }
+}`}</code></pre>
+      <p>
+        Two details keep it honest. Rows are swept from the bottom up, and each
+        row alternates left-to-right and right-to-left so liquids don't drift
+        to one side. Every cell also records the tick it last moved on, so a
+        grain that falls into a row that hasn't been visited yet isn't moved a
+        second time in the same step.
+      </p>
+      <p>
+        Turn on <em>Show chunks</em> in the panel to see it. Pour some water
+        and the highlighted squares follow the flow, then go out one by one as
+        it settles.
+      </p>
+
+      <h2>The source</h2>
+      <p>
+        Plain HTML, CSS and ES modules with no dependencies and no build step:
+        about five hundred lines across the element tables, the engine and the
+        UI. Read it at <a class="link" href="https://github.com/swayam5342/grain">github.com/swayam5342/grain</a>,
+        or <a class="link" href="/grain/">open the sandbox on its own page</a>.
+      </p>
+    </article>
+  </div>
+</BaseLayout>
+
+<style>
+  .gr {
+    max-width: 70rem;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+  }
+  .gr code,
+  .gr kbd {
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+  }
+
+  .gr-intro {
+    padding: 3rem 0 1.5rem;
+    max-width: var(--measure);
+  }
+  .gr-intro h1 {
+    font-size: 2rem;
+    margin: 0.3rem 0 0.8rem;
+  }
+  .gr-lede {
+    color: var(--ink-soft);
+    margin: 0;
+  }
+
+  .gr-article {
+    max-width: var(--measure);
+    margin-top: 3.5rem;
+  }
+  .gr-article h2 {
+    font-size: 1.4rem;
+    margin: 2.4em 0 0.7em;
+  }
+  .gr-article h2:first-child {
+    margin-top: 0;
+  }
+  .gr-article p {
+    margin: 0 0 1.2em;
+  }
+  .gr-article pre {
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    margin: 0 0 1.2em;
+  }
+
+  @media (max-width: 760px) {
+    .gr {
+      padding: 0 1rem 3rem;
+    }
+    .gr-intro {
+      padding-top: 2rem;
+    }
+  }
+</style>

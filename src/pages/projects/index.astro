@@ -18,6 +18,10 @@ const trace = (read: string, set: string): Span[] =>
     ? [['op', 'read '], ['lb', read.padEnd(6)], ['ar', set]]
     : [['op', 'start'.padEnd(11)], ['ar', set]];
 
+// A row of the chunk map: '#' is an awake chunk, '.' a sleeping one.
+const chunks = (row: string): Span[] =>
+  [...row].map((c): Span => (c === '#' ? ['op', '■ '] : ['cm', '· ']));
+
 const projects = [
   {
     name: '6502 Emulator',
@@ -66,10 +70,34 @@ const projects = [
       footer: 'State 7 accepts',
     },
   },
+  {
+    name: 'Grain',
+    status: 'Shipped',
+    summary:
+      'A falling-sand sandbox: sand, water, fire, acid, gas and oil, each following a few local rules. The world is split into 16×16 chunks and only the ones where something moved get simulated, so a settled pile costs nothing.',
+    stack: ['JavaScript', 'Canvas'],
+    href: '/projects/grain',
+    cta: 'Play with it',
+    specimen: {
+      title: 'show chunks · step 412',
+      code: [
+        chunks('............'),
+        chunks('...##.......'),
+        chunks('...###......'),
+        chunks('....###.....'),
+        chunks('.....####...'),
+        chunks('......####..'),
+        chunks('............'),
+      ],
+      outputTitle: 'chunks awake',
+      output: '16 / 84',
+      footer: '68 asleep',
+    },
+  },
 ];
 ---
 
-<BaseLayout title="Projects" description="Things I've built: a 6502 emulator and a Thompson NFA regex engine, both running in your browser.">
+<BaseLayout title="Projects" description="Things I've built: a 6502 emulator, a Thompson NFA regex engine and a falling-sand sandbox, all running in your browser.">
   <div class="page">
     <header class="intro">
       <h1>Projects</h1>

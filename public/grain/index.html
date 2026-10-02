@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Grain, a falling-sand sandbox</title>
+<meta name="description" content="A falling-sand sandbox running a chunked cellular automaton at 60fps.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏳</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body data-pagefind-ignore="all">
+<div class="app">
+  <aside>
+    <header class="brand">
+      <h1>Grain</h1>
+      <p class="sub">A falling-sand sandbox</p>
+    </header>
+    <div class="mode" role="group" aria-label="Brush mode">
+      <button type="button" id="modeDraw" aria-pressed="true">Draw</button>
+      <button type="button" id="modeSpawn" aria-pressed="false">Spawner</button>
+    </div>
+    <div class="tools" role="toolbar" aria-label="Elements" id="tools"></div>
+    <p class="desc" id="desc"></p>
+    <div class="row">
+      <div class="brush">
+        <label for="size"><span>Brush</span><output id="sizeOut">6</output></label>
+        <input type="range" id="size" min="1" max="24" value="6">
+      </div>
+      <div class="ctrl">
+        <button id="play" type="button">Pause</button>
+        <button id="step" type="button" disabled>Step</button>
+        <button id="clear" type="button">Clear</button>
+        <button id="chunks" type="button" aria-pressed="false">Show chunks</button>
+      </div>
+    </div>
+    <dl class="stats">
+      <div><dt>Frame rate</dt><dd id="fps">–</dd></div>
+      <div><dt>Particles</dt><dd id="count">–</dd></div>
+      <div><dt>Chunks awake</dt><dd id="awake">–</dd></div>
+      <div><dt>Spawners</dt><dd id="spawnCount">0</dd></div>
+    </dl>
+    <p class="about">The world is a cellular automaton split into 16×16 chunks. A chunk where nothing moved goes to sleep and costs nothing until a neighbour disturbs it. Turn on Show chunks to watch them wake.</p>
+    <p class="keys"><kbd>1</kbd>–<kbd>9</kbd> elements, <kbd>S</kbd> spawner mode, <kbd>[</kbd> <kbd>]</kbd> brush size, <kbd>Space</kbd> pause, <kbd>N</kbd> step, <kbd>V</kbd> chunks, <kbd>X</kbd> clear. Right-click erases.</p>
+  </aside>
+  <main class="stage" id="stage">
+    <canvas id="sim"></canvas>
+    <div class="hint" id="hint">Pick an element and draw. Try fire on the plank, or acid on the sand pile.</div>
+  </main>
+</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
